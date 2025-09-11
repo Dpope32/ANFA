@@ -1,0 +1,267 @@
+# Stock Price Prediction System Design
+
+## Overview
+
+The Stock Price Prediction System is a hybrid quantitative-qualitative model that combines polynomial regression with P/E ratio data and qualitative market factors to generate three prediction scenarios (conservative, bullish, bearish) for any publicly traded security. The system is designed for futures trading with a focus on high accuracy and fast capital building.
+
+**Key Design Principles:**
+
+- Single-stock focus per session for maximum accuracy
+- Multi-model approach with automatic fallback mechanisms
+- Real-time data integration with multiple source redundancy
+- Continuous learning and model improvement
+- Visual performance validation for trader confidence
+
+## Architecture
+
+```mermaid
+graph TB
+    UI[Web Interface] --> API[API Gateway]
+    API --> PS[Prediction Service]
+    API --> DS[Data Service]
+    API --> VS[Visualization Service]
+
+    PS --> MR[Model Registry]
+    PS --> PE[Prediction Engine]
+
+    DS --> MM[Moomoo API]
+    DS --> IT[Insider Trading API]
+    DS --> DC[Data Cache]
+
+    PE --> PR[Polynomial Regression]
+    PE --> MV[Multivariate Model]
+    PE --> NN[Neural Network]
+
+    VS --> CG[Chart Generator]
+    VS --> MG[Metrics Generator]
+
+    MR --> ML[Model Learning Pipeline]
+    ML --> AB[A/B Testing Framework]
+```
+
+**Architecture Rationale:**
+
+- Microservices approach allows independent scaling and deployment
+- Model Registry enables A/B testing and continuous improvement
+- Moomoo API provides comprehensive data reducing external dependencies
+- Separation of concerns between prediction, data, and visualization
+
+## Components and Interfaces
+
+### 1. Data Service
+
+**Purpose:** Fetch, validate, and cache market data from multiple sources
+
+**Key Components:**
+
+- **Primary Data Fetcher:** Moomoo API (comprehensive market data including prices, P/E ratios, volume)
+- **Insider Trading Fetcher:** Specialized API for political trades
+- **Data Validator:** Filters invalid/anomalous data points
+- **Cache Manager:** Redis-based caching for performance
+
+**Interface:**
+
+```typescript
+interface DataService {
+  fetchStockData(symbol: string, period: string): Promise<StockData>;
+  fetchInsiderTrades(symbol: string): Promise<InsiderTrade[]>;
+  validateData(data: any[]): any[];
+}
+```
+
+### 2. Prediction Engine
+
+**Purpose:** Generate three prediction scenarios using hybrid models
+
+**Key Components:**
+
+- **Polynomial Regression Model:** Primary prediction algorithm
+- **Multivariate Model:** Incorporates P/E ratios and volume when available
+- **Neural Network Model:** Advanced model for comparison and potential upgrade
+- **Scenario Generator:** Creates conservative, bullish, bearish predictions
+- **Insider Trading Analyzer:** Adjusts predictions based on political trades
+
+**Interface:**
+
+```typescript
+interface PredictionEngine {
+  generatePredictions(stockData: StockData): Promise<PredictionResult>;
+  calculateAccuracyMetrics(
+    predictions: number[],
+    actual: number[]
+  ): AccuracyMetrics;
+  adjustForInsiderTrading(
+    predictions: PredictionResult,
+    trades: InsiderTrade[]
+  ): PredictionResult;
+}
+```
+
+### 3. Model Registry
+
+**Purpose:** Manage model versions, performance tracking, and continuous improvement
+
+**Key Components:**
+
+- **Model Versioning:** Track different model iterations
+- **Performance Monitor:** Log actual vs predicted outcomes
+- **Retraining Pipeline:** Automatic model updates based on new data
+- **A/B Testing Framework:** Validate model improvements before deployment
+
+**Interface:**
+
+```typescript
+interface ModelRegistry {
+  registerModel(model: Model, version: string): void;
+  getActiveModel(type: ModelType): Model;
+  logPredictionOutcome(prediction: Prediction, actual: number): void;
+  triggerRetraining(modelType: ModelType): Promise<void>;
+}
+```
+
+### 4. Visualization Service
+
+**Purpose:** Generate charts and performance metrics for trader confidence
+
+**Key Components:**
+
+- **Chart Generator:** Historical data + prediction overlays
+- **Metrics Calculator:** R², RMSE, confidence intervals
+- **Performance Dashboard:** Model accuracy tracking
+
+**Interface:**
+
+```typescript
+interface VisualizationService {
+  generatePredictionChart(
+    data: StockData,
+    predictions: PredictionResult
+  ): ChartData;
+  calculateMetrics(predictions: number[], actual: number[]): MetricsData;
+  createPerformanceDashboard(modelStats: ModelStats[]): DashboardData;
+}
+```
+
+## Data Models
+
+### Core Data Structures
+
+```typescript
+interface StockData {
+  symbol: string;
+  prices: PricePoint[];
+  volume: number[];
+  peRatio?: number;
+  marketCap?: number;
+  timestamp: Date;
+}
+
+interface PricePoint {
+  date: Date;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  adjustedClose: number;
+}
+
+interface PredictionResult {
+  symbol: string;
+  conservative: PredictionScenario;
+  bullish: PredictionScenario;
+  bearish: PredictionScenario;
+  accuracy: AccuracyMetrics;
+  confidence: number;
+  timestamp: Date;
+}
+
+interface PredictionScenario {
+  targetPrice: number;
+  timeframe: string;
+  probability: number;
+  factors: string[];
+}
+
+interface AccuracyMetrics {
+  rSquared: number;
+  rmse: number;
+  mape: number;
+  confidenceInterval: [number, number];
+}
+
+interface InsiderTrade {
+  politician: string;
+  symbol: string;
+  tradeType: "BUY" | "SELL";
+  amount: number;
+  date: Date;
+  impact: "HIGH" | "MEDIUM" | "LOW";
+}
+```
+
+**Data Model Rationale:**
+
+- Structured to support both simple and complex prediction models
+- Flexible enough to accommodate different data sources
+- Includes metadata for tracking and validation
+- Supports both historical analysis and real-time predictions
+
+## Error Handling
+
+### Data Source Failures
+
+- **Moomoo API Issues:** Implement retry logic with exponential backoff
+- **Invalid Data:** Filter and log anomalies, continue with valid subset
+- **Rate Limiting:** Implement exponential backoff and request queuing
+- **Network Issues:** Retry logic with circuit breaker pattern
+
+### Model Failures
+
+- **Insufficient Data:** Fall back to simpler models (univariate → basic trend)
+- **Poor Model Performance:** Trigger retraining pipeline
+- **Prediction Errors:** Return confidence intervals and uncertainty metrics
+- **Memory/Compute Issues:** Implement graceful degradation
+
+### User Experience
+
+- **Clear Error Messages:** Specific, actionable feedback for users
+- **Graceful Degradation:** Partial results when full analysis fails
+- **Status Indicators:** Real-time feedback on data fetching and processing
+- **Fallback Visualizations:** Basic charts when advanced features fail
+
+## Testing Strategy
+
+### Unit Testing
+
+- **Data Validation:** Test filtering and cleaning algorithms
+- **Model Accuracy:** Validate prediction algorithms against known datasets
+- **API Integration:** Mock external services for reliable testing
+- **Error Handling:** Test all failure scenarios and fallback mechanisms
+
+### Integration Testing
+
+- **End-to-End Workflows:** Complete prediction pipeline testing
+- **Data Source Integration:** Test with real API responses
+- **Model Performance:** Validate accuracy metrics calculation
+- **Visualization Generation:** Test chart and metrics creation
+
+### Performance Testing
+
+- **Load Testing:** Multiple concurrent prediction requests
+- **Data Volume Testing:** Large historical datasets
+- **Response Time:** Sub-second prediction generation
+- **Memory Usage:** Efficient handling of large datasets
+
+### A/B Testing Framework
+
+- **Model Comparison:** Test new models against current production
+- **Feature Validation:** Gradual rollout of new capabilities
+- **Performance Monitoring:** Real-time accuracy tracking
+- **Rollback Capability:** Quick reversion if performance degrades
+
+**Testing Rationale:**
+
+- Comprehensive testing ensures reliability for trading decisions
+- A/B testing enables safe continuous improvement
+- Performance testing validates system scalability
+- Mock testing reduces dependency on external services during development
