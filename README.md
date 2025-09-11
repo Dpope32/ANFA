@@ -1,6 +1,6 @@
 # Stock Price Predictor
 
-A hybrid quantitative-qualitative model for predicting stock prices using polynomial regression, P/E ratio data, and insider trading signals.
+A hybrid quantitative-qualitative model for predicting stock prices using polynomial regression, P/E ratio data, insider trading signals, politician trades, option chains, technical indicators, earnings reports, market sentiment analysis, institutional holdings, and more.
 
 ## Features
 

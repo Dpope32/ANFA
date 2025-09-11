@@ -18,13 +18,16 @@ The Stock Price Prediction Algorithm is a hybrid quantitative-qualitative model 
 
 ### Requirement 2
 
-**User Story:** As a trader, I want the system to use multiple data sources, so that predictions are more accurate.
+**User Story:** As a trader, I want the system to use best-in-class data sources, so that predictions are more accurate.
 
 #### Acceptance Criteria
 
-1. WHEN sufficient data exists THEN the system SHALL use multivariate models (price + P/E + volume)
-2. WHEN data is insufficient THEN the system SHALL fall back to simpler models
-3. WHEN invalid data is detected THEN the system SHALL filter it out automatically
+1. WHEN fetching price/volume data THEN the system SHALL use Polygon API for real-time and historical market data
+2. WHEN fetching fundamentals THEN the system SHALL use Finnhub API for P/E ratios and financial metrics
+3. WHEN politician trade data exists THEN the system SHALL use Quiver Quantitative for insider trading intelligence
+4. WHEN sufficient data exists THEN the system SHALL use multivariate models (price + P/E + volume)
+5. WHEN data is insufficient THEN the system SHALL fall back to simpler models
+6. WHEN invalid data is detected THEN the system SHALL filter it out automatically
 
 ### Requirement 3
 
@@ -37,13 +40,14 @@ The Stock Price Prediction Algorithm is a hybrid quantitative-qualitative model 
 
 ### Requirement 4
 
-**User Story:** As a trader, I want automatic data fetching, so that I don't need to input data manually.
+**User Story:** As a trader, I want automatic data fetching from premium sources, so that I get the highest quality data without manual work.
 
 #### Acceptance Criteria
 
-1. WHEN a stock symbol is entered THEN the system SHALL fetch all required data automatically
-2. WHEN primary data source fails THEN the system SHALL use backup sources
-3. WHEN data is unavailable THEN the system SHALL show clear error messages
+1. WHEN a stock symbol is entered THEN the system SHALL automatically fetch price/volume from Polygon, fundamentals from Finnhub, and politician trades from Quiver
+2. WHEN any primary data source fails THEN the system SHALL gracefully degrade and continue with available data
+3. WHEN data is unavailable THEN the system SHALL show clear error messages with specific source information
+4. WHEN rate limits are hit THEN the system SHALL implement intelligent backoff and retry strategies
 
 ### Requirement 5
 

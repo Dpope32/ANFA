@@ -24,8 +24,9 @@ graph TB
     PS --> MR[Model Registry]
     PS --> PE[Prediction Engine]
 
-    DS --> MM[Moomoo API]
-    DS --> IT[Insider Trading API]
+    DS --> PG[Polygon API]
+    DS --> FH[Finnhub API]
+    DS --> QV[Quiver API]
     DS --> DC[Data Cache]
 
     PE --> PR[Polynomial Regression]
@@ -43,7 +44,7 @@ graph TB
 
 - Microservices approach allows independent scaling and deployment
 - Model Registry enables A/B testing and continuous improvement
-- Moomoo API provides comprehensive data reducing external dependencies
+- Best-in-class data sources: Polygon (institutional-grade market data), Finnhub (comprehensive fundamentals), Quiver (unique political trading edge)
 - Separation of concerns between prediction, data, and visualization
 
 ## Components and Interfaces
@@ -54,18 +55,33 @@ graph TB
 
 **Key Components:**
 
-- **Primary Data Fetcher:** Moomoo API (comprehensive market data including prices, P/E ratios, volume)
-- **Insider Trading Fetcher:** Specialized API for political trades
-- **Data Validator:** Filters invalid/anomalous data points
-- **Cache Manager:** Redis-based caching for performance
+- **Market Data Fetcher:** Polygon API (institutional-grade real-time and historical prices, volume, OHLC data)
+- **Fundamentals Fetcher:** Finnhub API (P/E ratios, financial metrics, earnings data, analyst estimates)
+- **Political Trading Fetcher:** Quiver Quantitative API (politician trades, insider activity, unusual options flow)
+- **Data Validator:** Filters invalid/anomalous data points across all sources
+- **Cache Manager:** Redis-based caching with source-specific TTL for performance
 
 **Interface:**
 
 ```typescript
 interface DataService {
-  fetchStockData(symbol: string, period: string): Promise<StockData>;
-  fetchInsiderTrades(symbol: string): Promise<InsiderTrade[]>;
-  validateData(data: any[]): any[];
+  // Polygon API integration
+  fetchMarketData(symbol: string, period: string): Promise<MarketData>;
+  fetchRealTimePrice(symbol: string): Promise<RealTimePrice>;
+
+  // Finnhub API integration
+  fetchFundamentals(symbol: string): Promise<FundamentalData>;
+  fetchPERatio(symbol: string): Promise<number>;
+  fetchEarningsData(symbol: string): Promise<EarningsData>;
+
+  // Quiver API integration
+  fetchPoliticianTrades(symbol: string): Promise<PoliticianTrade[]>;
+  fetchInsiderActivity(symbol: string): Promise<InsiderActivity[]>;
+  fetchUnusualOptionsFlow(symbol: string): Promise<OptionsFlow[]>;
+
+  // Data validation and caching
+  validateData(data: any[], source: DataSource): any[];
+  getCachedData(key: string): Promise<any>;
 }
 ```
 
@@ -79,7 +95,7 @@ interface DataService {
 - **Multivariate Model:** Incorporates P/E ratios and volume when available
 - **Neural Network Model:** Advanced model for comparison and potential upgrade
 - **Scenario Generator:** Creates conservative, bullish, bearish predictions
-- **Insider Trading Analyzer:** Adjusts predictions based on political trades
+- **Political Trading Analyzer:** Adjusts predictions based on politician trades and insider activity from Quiver
 
 **Interface:**
 
@@ -90,9 +106,10 @@ interface PredictionEngine {
     predictions: number[],
     actual: number[]
   ): AccuracyMetrics;
-  adjustForInsiderTrading(
+  adjustForPoliticalTrading(
     predictions: PredictionResult,
-    trades: InsiderTrade[]
+    trades: PoliticianTrade[],
+    insiderActivity: InsiderActivity[]
   ): PredictionResult;
 }
 ```
@@ -147,12 +164,35 @@ interface VisualizationService {
 ### Core Data Structures
 
 ```typescript
-interface StockData {
+// Polygon market data
+interface MarketData {
   symbol: string;
   prices: PricePoint[];
-  volume: number[];
-  peRatio?: number;
-  marketCap?: number;
+  volume: VolumePoint[];
+  timestamp: Date;
+  source: "polygon";
+}
+
+// Finnhub fundamental data
+interface FundamentalData {
+  symbol: string;
+  peRatio: number;
+  forwardPE: number;
+  marketCap: number;
+  eps: number;
+  revenue: number;
+  revenueGrowth: number;
+  timestamp: Date;
+  source: "finnhub";
+}
+
+// Combined stock data
+interface StockData {
+  symbol: string;
+  marketData: MarketData;
+  fundamentals: FundamentalData;
+  politicalTrades?: PoliticianTrade[];
+  insiderActivity?: InsiderActivity[];
   timestamp: Date;
 }
 
@@ -163,6 +203,13 @@ interface PricePoint {
   low: number;
   close: number;
   adjustedClose: number;
+  vwap?: number; // Polygon provides VWAP
+}
+
+interface VolumePoint {
+  date: Date;
+  volume: number;
+  transactions?: number; // Polygon provides transaction count
 }
 
 interface PredictionResult {
@@ -189,13 +236,46 @@ interface AccuracyMetrics {
   confidenceInterval: [number, number];
 }
 
-interface InsiderTrade {
+// Quiver political trading data
+interface PoliticianTrade {
   politician: string;
+  party: string;
+  chamber: "House" | "Senate";
   symbol: string;
   tradeType: "BUY" | "SELL";
   amount: number;
+  minAmount: number;
+  maxAmount: number;
   date: Date;
+  reportDate: Date;
   impact: "HIGH" | "MEDIUM" | "LOW";
+  source: "quiver";
+}
+
+interface InsiderActivity {
+  insider: string;
+  title: string;
+  symbol: string;
+  tradeType: "BUY" | "SELL";
+  shares: number;
+  price: number;
+  value: number;
+  date: Date;
+  filingDate: Date;
+  source: "quiver";
+}
+
+interface OptionsFlow {
+  symbol: string;
+  optionType: "CALL" | "PUT";
+  strike: number;
+  expiration: Date;
+  volume: number;
+  openInterest: number;
+  premium: number;
+  unusualActivity: boolean;
+  date: Date;
+  source: "quiver";
 }
 ```
 
@@ -210,10 +290,12 @@ interface InsiderTrade {
 
 ### Data Source Failures
 
-- **Moomoo API Issues:** Implement retry logic with exponential backoff
-- **Invalid Data:** Filter and log anomalies, continue with valid subset
-- **Rate Limiting:** Implement exponential backoff and request queuing
-- **Network Issues:** Retry logic with circuit breaker pattern
+- **Polygon API Issues:** Implement retry logic with exponential backoff, respect rate limits (5 calls/min free, 1000/min paid)
+- **Finnhub API Issues:** Handle rate limits (60 calls/min free, 600/min paid), implement intelligent caching
+- **Quiver API Issues:** Graceful degradation when political data unavailable, cache recent trades
+- **Invalid Data:** Filter and log anomalies per source, continue with valid subset
+- **Cross-Source Validation:** Verify price data consistency between sources when possible
+- **Network Issues:** Retry logic with circuit breaker pattern per API endpoint
 
 ### Model Failures
 
