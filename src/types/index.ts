@@ -1,7 +1,7 @@
 // Core type definitions for the stock price prediction system
 
 /**
- * Represents a single price point in time series data
+ * Represents a single price point in time series data from Polygon
  */
 export interface PricePoint {
   date: Date;
@@ -10,17 +10,55 @@ export interface PricePoint {
   low: number;
   close: number;
   adjustedClose: number;
+  vwap?: number; // Volume-weighted average price from Polygon
+  transactions?: number; // Transaction count from Polygon
 }
 
 /**
- * Complete stock data including prices, volume, and fundamental metrics
+ * Volume data point from Polygon
+ */
+export interface VolumePoint {
+  date: Date;
+  volume: number;
+  transactions?: number;
+}
+
+/**
+ * Market data from Polygon API
+ */
+export interface MarketData {
+  symbol: string;
+  prices: PricePoint[];
+  volume: VolumePoint[];
+  timestamp: Date;
+  source: "polygon";
+}
+
+/**
+ * Fundamental data from Finnhub API
+ */
+export interface FundamentalData {
+  symbol: string;
+  peRatio: number;
+  forwardPE: number;
+  marketCap: number;
+  eps: number;
+  revenue: number;
+  revenueGrowth: number;
+  timestamp: Date;
+  source: "finnhub";
+}
+
+/**
+ * Complete stock data combining all sources
  */
 export interface StockData {
   symbol: string;
-  prices: PricePoint[];
-  volume: number[];
-  peRatio?: number;
-  marketCap?: number;
+  marketData: MarketData;
+  fundamentals: FundamentalData;
+  politicalTrades?: PoliticianTrade[];
+  insiderActivity?: InsiderActivity[];
+  optionsFlow?: OptionsFlow[];
   timestamp: Date;
 }
 
@@ -58,19 +96,70 @@ export interface AccuracyMetrics {
 }
 
 /**
- * Insider trading data for qualitative analysis
+ * Political trading data from Quiver Quantitative
  */
-export interface InsiderTrade {
+export interface PoliticianTrade {
   politician: string;
+  party: string;
+  chamber: "House" | "Senate";
   symbol: string;
   tradeType: "BUY" | "SELL";
   amount: number;
+  minAmount: number;
+  maxAmount: number;
   date: Date;
+  reportDate: Date;
   impact: "HIGH" | "MEDIUM" | "LOW";
+  source: "quiver";
 }
 
 /**
- * Chart data for visualization
+ * Insider activity data from Quiver
+ */
+export interface InsiderActivity {
+  insider: string;
+  title: string;
+  symbol: string;
+  tradeType: "BUY" | "SELL";
+  shares: number;
+  price: number;
+  value: number;
+  date: Date;
+  filingDate: Date;
+  source: "quiver";
+}
+
+/**
+ * Unusual options flow from Quiver
+ */
+export interface OptionsFlow {
+  symbol: string;
+  optionType: "CALL" | "PUT";
+  strike: number;
+  expiration: Date;
+  volume: number;
+  openInterest: number;
+  premium: number;
+  unusualActivity: boolean;
+  date: Date;
+  source: "quiver";
+}
+
+/**
+ * Real-time price data from Polygon
+ */
+export interface RealTimePrice {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  volume: number;
+  timestamp: Date;
+  source: "polygon";
+}
+
+/**
+ * Chart data for visualization with source attribution
  */
 export interface ChartData {
   historical: PricePoint[];
@@ -80,6 +169,30 @@ export interface ChartData {
     bearish: number[];
   };
   dates: Date[];
+  politicalEvents?: PoliticalEvent[];
+  volumeAnomalies?: VolumeAnomaly[];
+}
+
+/**
+ * Political event markers for charts
+ */
+export interface PoliticalEvent {
+  date: Date;
+  politician: string;
+  tradeType: "BUY" | "SELL";
+  impact: "HIGH" | "MEDIUM" | "LOW";
+  description: string;
+}
+
+/**
+ * Volume anomaly markers for charts
+ */
+export interface VolumeAnomaly {
+  date: Date;
+  volume: number;
+  averageVolume: number;
+  anomalyScore: number;
+  description: string;
 }
 
 /**
@@ -91,4 +204,61 @@ export interface ModelStats {
   accuracy: AccuracyMetrics;
   lastUpdated: Date;
   trainingDataSize: number;
+}
+/**
+ * Data source enumeration
+ */
+export type DataSource = "polygon" | "finnhub" | "quiver";
+
+/**
+ * API client configuration
+ */
+export interface ApiConfig {
+  polygon: {
+    apiKey: string;
+    baseUrl: string;
+    rateLimit: number; // requests per minute
+  };
+  finnhub: {
+    apiKey: string;
+    baseUrl: string;
+    rateLimit: number;
+  };
+  quiver: {
+    apiKey: string;
+    baseUrl: string;
+    rateLimit: number;
+  };
+}
+
+/**
+ * Cache configuration per data source
+ */
+export interface CacheConfig {
+  polygon: {
+    ttl: number; // seconds
+    maxSize: number;
+  };
+  finnhub: {
+    ttl: number;
+    maxSize: number;
+  };
+  quiver: {
+    ttl: number;
+    maxSize: number;
+  };
+}
+
+/**
+ * API response wrapper with metadata
+ */
+export interface ApiResponse<T> {
+  data: T;
+  source: DataSource;
+  timestamp: Date;
+  cached: boolean;
+  rateLimit?: {
+    remaining: number;
+    resetTime: Date;
+  };
 }

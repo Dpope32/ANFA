@@ -11,8 +11,22 @@ Our hybrid quantitative-qualitative stock prediction algorithm combines polynomi
 ```python
 # Normalize time series: t = years since base year (e.g., 2010)
 t = years - base_year
-# Filter valid P/E data (remove NaN, negative, zero values)
+
+# Polygon market data preprocessing
+polygon_data = validate_polygon_data(raw_market_data)
+prices = polygon_data['adjusted_close']
+volume = polygon_data['volume']
+vwap = polygon_data['vwap']  # Volume-weighted average price
+
+# Finnhub fundamentals preprocessing
+finnhub_data = validate_finnhub_data(raw_fundamental_data)
+pe_ratios = finnhub_data['pe_ratio']
+forward_pe = finnhub_data['forward_pe']
 valid_mask = ~np.isnan(pe_ratios) & (pe_ratios > 0)
+
+# Quiver political data preprocessing
+quiver_trades = filter_recent_political_trades(raw_political_data, days=90)
+political_sentiment = calculate_political_sentiment(quiver_trades)
 ```
 
 ### 2. Model Selection Logic
@@ -53,12 +67,17 @@ else:
 ### 5. Prediction Generation
 
 ```python
-# For multivariate model
-X_future = [future_t³, future_t², future_t, 1, forward_pe]
+# For multivariate model with Finnhub P/E data
+X_future = [future_t³, future_t², future_t, 1, forward_pe_finnhub]
 predicted_price = model.predict(X_future)
 
-# Apply qualitative adjustments
-adjusted_price = predicted_price * (1 + qualitative_factor)
+# Apply Quiver political trading adjustments
+political_adjustment = calculate_political_impact(quiver_trades, symbol)
+volume_adjustment = calculate_volume_anomaly(polygon_volume_data)
+
+# Apply combined qualitative adjustments
+total_adjustment = qualitative_factor + political_adjustment + volume_adjustment
+adjusted_price = predicted_price * (1 + total_adjustment)
 ```
 
 ## Qualitative Adjustment Framework
@@ -133,24 +152,65 @@ adjusted_price = predicted_price * (1 + qualitative_factor)
 ```python
 class StockPredictor:
     def __init__(self, base_year=2010)
-    def fit(self, historical_data: pd.DataFrame)
-    def predict(self, forward_pe: float, qual_adjustments: dict)
+    def fit(self, polygon_data: pd.DataFrame, finnhub_data: pd.DataFrame)
+    def predict(self, forward_pe: float, political_data: dict, qual_adjustments: dict)
     def generate_scenarios(self) -> dict
     def evaluate_model(self) -> dict
+
+class MultiSourceDataManager:
+    def __init__(self, polygon_client, finnhub_client, quiver_client)
+    def fetch_all_data(self, symbol: str) -> CombinedStockData
+    def validate_cross_source_consistency(self, data: dict) -> bool
+    def cache_data(self, symbol: str, data: dict, ttl: int)
+
+class PoliticalTradingAnalyzer:
+    def analyze_politician_trades(self, quiver_trades: list) -> dict
+    def calculate_political_sentiment(self, trades: list) -> float
+    def detect_unusual_activity(self, trades: list, options_flow: list) -> bool
+    def apply_political_adjustments(self, base_prediction: float) -> float
 
 class QualitativeAdjuster:
     def calculate_risk_factors(self, stock_data: dict) -> float
     def calculate_growth_factors(self, stock_data: dict) -> float
+    def calculate_political_factors(self, political_data: dict) -> float
     def apply_adjustments(self, base_prediction: float) -> float
 ```
 
 ### Data Pipeline
 
-1. **Data Ingestion:** Fetch historical prices and P/E ratios
-2. **Data Validation:** Filter invalid/anomalous data points
-3. **Model Training:** Fit multivariate or cubic model based on data availability
-4. **Prediction:** Generate base prediction using fitted model
-5. **Adjustment:** Apply qualitative factors for final scenarios
-6. **Output:** Return three scenarios with confidence metrics
+1. **Multi-Source Data Ingestion:**
+
+   - Polygon: Historical prices, volume, VWAP, real-time data
+   - Finnhub: P/E ratios, forward P/E, earnings, financial metrics
+   - Quiver: Political trades, insider activity, unusual options flow
+
+2. **Cross-Source Data Validation:**
+
+   - Filter invalid/anomalous data points per source
+   - Validate price consistency between sources when possible
+   - Handle rate limiting and API failures gracefully
+
+3. **Enhanced Model Training:**
+
+   - Fit multivariate model with Polygon prices + Finnhub fundamentals
+   - Incorporate volume-weighted metrics from Polygon
+   - Fall back to cubic model based on data availability
+
+4. **Multi-Factor Prediction:**
+
+   - Generate base prediction using fitted model
+   - Apply Quiver political trading intelligence
+   - Factor in unusual options activity and insider trades
+
+5. **Comprehensive Adjustment:**
+
+   - Apply traditional qualitative factors
+   - Add political sentiment adjustments
+   - Include volume anomaly detection
+
+6. **Enhanced Output:**
+   - Return three scenarios with confidence metrics
+   - Include data source attribution and freshness
+   - Provide political trading context and insider activity summary
 
 This architecture provides a systematic, testable approach to stock price prediction that balances quantitative rigor with qualitative market insights.

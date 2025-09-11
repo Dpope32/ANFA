@@ -7,12 +7,14 @@
   - Set up environment configuration for API keys
   - _Requirements: 1.1, 4.1_
 
-- [ ] 2. Implement Moomoo data service
+- [ ] 2. Implement multi-source data service
 
-  - Create MoomooClient class for fetching stock data (prices, P/E, volume)
-  - Add basic data validation and error handling
-  - Implement simple in-memory caching
-  - _Requirements: 4.1, 4.2, 2.1_
+  - Create PolygonClient class for market data (prices, volume, OHLC, VWAP)
+  - Create FinnhubClient class for fundamentals (P/E, earnings, financial metrics)
+  - Create QuiverClient class for political trades and insider activity
+  - Add data validation and error handling per source
+  - Implement Redis caching with source-specific TTL
+  - _Requirements: 4.1, 4.2, 4.4, 2.1, 2.2, 2.3_
 
 - [ ] 3. Build polynomial regression prediction engine
 
@@ -28,11 +30,13 @@
   - Generate accuracy metrics (R², RMSE) for model validation
   - _Requirements: 1.2, 1.3, 6.2_
 
-- [ ] 5. Add insider trading integration
+- [ ] 5. Add political trading and insider activity integration
 
-  - Create InsiderTradingClient for political trade data
-  - Implement simple impact scoring (HIGH/MEDIUM/LOW)
-  - Adjust prediction scenarios based on insider trading signals
+  - Integrate Quiver political trades with party/chamber analysis
+  - Add insider activity tracking with filing date analysis
+  - Implement unusual options flow detection
+  - Create sophisticated impact scoring based on trade size and timing
+  - Adjust prediction scenarios based on political and insider signals
   - _Requirements: 3.1, 3.2_
 
 - [ ] 6. Build visualization components
