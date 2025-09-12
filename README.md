@@ -1,11 +1,11 @@
 # Stock Price Predictor
 
-A hybrid quantitative-qualitative model for predicting stock prices using polynomial regression, P/E ratio data, insider trading signals, politician trades, option chains, technical indicators, earnings reports, market sentiment analysis, institutional holdings, and more.
+A hybrid quantitative-qualitative model for predicting stock prices using polynomial regression, P/E ratio data, insider trading signals, congressional trades, technical indicators, earnings reports, market sentiment analysis, and more.
 
 ## Features
 
 - Three prediction scenarios: conservative, bullish, and bearish
-- Multi-source data integration (Moomoo API, insider trading data)
+- Multi-source data integration (Polygon.io, Finnhub, SEC API)
 - Continuous learning and model improvement
 - Visual performance validation
 - Real-time accuracy metrics

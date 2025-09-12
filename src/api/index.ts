@@ -355,10 +355,10 @@ export class ApiServer {
       sources.push(stockData.fundamentals.source);
     }
     if (stockData.politicalTrades?.length > 0) {
-      sources.push("quiver");
+      sources.push("secapi");
     }
     if (stockData.insiderActivity?.length > 0) {
-      sources.push("quiver");
+      sources.push("secapi");
     }
 
     return [...new Set(sources)];

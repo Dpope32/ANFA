@@ -99,9 +99,8 @@ export class PredictionService {
     const insiderSignal = this.calculateInsiderSignal(
       stockData.insiderActivity || []
     );
-    const optionsSignal = this.calculateOptionsSignal(
-      stockData.optionsFlow || []
-    );
+    // Options signal removed - SEC API doesn't provide options data
+    const optionsSignal = 0;
 
     return {
       ...priceFeatures,
@@ -270,8 +269,6 @@ export class PredictionService {
     if (stockData.politicalTrades && stockData.politicalTrades.length > 0)
       confidence += 0.1;
     if (stockData.insiderActivity && stockData.insiderActivity.length > 0)
-      confidence += 0.1;
-    if (stockData.optionsFlow && stockData.optionsFlow.length > 0)
       confidence += 0.1;
 
     // Reduce confidence for high volatility

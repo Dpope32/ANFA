@@ -106,24 +106,8 @@ export class ScenarioGenerator {
         }, 0) / Math.max(1, recentActivity.length);
     }
 
-    // Options sentiment
-    if (stockData.optionsFlow && stockData.optionsFlow.length > 0) {
-      const recentFlow = stockData.optionsFlow.filter((flow) => {
-        const daysSince =
-          (Date.now() - flow.date.getTime()) / (1000 * 60 * 60 * 24);
-        return daysSince <= 7;
-      });
-
-      factors.optionsSentiment =
-        recentFlow.reduce((sum, flow) => {
-          if (flow.unusualActivity) {
-            const direction = flow.optionType === "CALL" ? 1 : -1;
-            const weight = Math.log(flow.premium + 1) / 100;
-            return sum + direction * weight;
-          }
-          return sum;
-        }, 0) / Math.max(1, recentFlow.length);
-    }
+    // Options sentiment - removed as SEC API doesn't provide options data
+    // This could be replaced with alternative sentiment indicators
 
     // Fundamental sentiment
     const fundamentals = stockData.fundamentals;

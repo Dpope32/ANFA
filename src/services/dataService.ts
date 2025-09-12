@@ -2,14 +2,13 @@ import {
   FundamentalData,
   InsiderActivity,
   MarketData,
-  OptionsFlow,
   PoliticianTrade,
   StockData,
 } from "../types";
 import { cacheService } from "./cache";
 import { FinnhubClient } from "./finnhubClient";
 import { PolygonClient } from "./polygonClient";
-import { QuiverClient } from "./quiverClient";
+import { SecApiClient } from "./secApiClient";
 
 /**
  * Comprehensive data service that aggregates data from multiple sources
@@ -17,12 +16,12 @@ import { QuiverClient } from "./quiverClient";
 export class DataService {
   private polygonClient: PolygonClient;
   private finnhubClient: FinnhubClient;
-  private quiverClient: QuiverClient;
+  private secApiClient: SecApiClient;
 
   constructor() {
     this.polygonClient = new PolygonClient();
     this.finnhubClient = new FinnhubClient();
-    this.quiverClient = new QuiverClient();
+    this.secApiClient = new SecApiClient();
   }
 
   /**
@@ -39,19 +38,13 @@ export class DataService {
 
     try {
       // Fetch data from all sources in parallel
-      const [
-        marketData,
-        fundamentals,
-        politicalTrades,
-        insiderActivity,
-        optionsFlow,
-      ] = await Promise.allSettled([
-        this.getMarketData(symbol),
-        this.getFundamentalData(symbol),
-        this.getPoliticalTrades(symbol),
-        this.getInsiderActivity(symbol),
-        this.getOptionsFlow(symbol),
-      ]);
+      const [marketData, fundamentals, politicalTrades, insiderActivity] =
+        await Promise.allSettled([
+          this.getMarketData(symbol),
+          this.getFundamentalData(symbol),
+          this.getPoliticalTrades(symbol),
+          this.getInsiderActivity(symbol),
+        ]);
 
       const stockData: StockData = {
         symbol: symbol.toUpperCase(),
@@ -67,8 +60,7 @@ export class DataService {
           politicalTrades.status === "fulfilled" ? politicalTrades.value : [],
         insiderActivity:
           insiderActivity.status === "fulfilled" ? insiderActivity.value : [],
-        optionsFlow:
-          optionsFlow.status === "fulfilled" ? optionsFlow.value : [],
+
         timestamp: new Date(),
       };
 
@@ -111,26 +103,18 @@ export class DataService {
   }
 
   /**
-   * Get political trades from Quiver
+   * Get political trades from SEC API
    */
   private async getPoliticalTrades(symbol: string): Promise<PoliticianTrade[]> {
-    const response = await this.quiverClient.getPoliticalTrades(symbol);
+    const response = await this.secApiClient.getPoliticalTrades(symbol);
     return response.data;
   }
 
   /**
-   * Get insider activity from Quiver
+   * Get insider activity from SEC API
    */
   private async getInsiderActivity(symbol: string): Promise<InsiderActivity[]> {
-    const response = await this.quiverClient.getInsiderActivity(symbol);
-    return response.data;
-  }
-
-  /**
-   * Get options flow from Quiver
-   */
-  private async getOptionsFlow(symbol: string): Promise<OptionsFlow[]> {
-    const response = await this.quiverClient.getOptionsFlow(symbol);
+    const response = await this.secApiClient.getInsiderActivity(symbol);
     return response.data;
   }
 
@@ -178,8 +162,7 @@ export class DataService {
     const results = await Promise.all([
       cacheService.clearSymbol("polygon", symbol),
       cacheService.clearSymbol("finnhub", symbol),
-      cacheService.clearSymbol("quiver", symbol),
-      cacheService.clearSymbol("polygon", symbol),
+      cacheService.clearSymbol("secapi", symbol),
     ]);
 
     return results.every((result) => result);
@@ -191,13 +174,13 @@ export class DataService {
   async healthCheck(): Promise<{
     polygon: boolean;
     finnhub: boolean;
-    quiver: boolean;
+    secApi: boolean;
     cache: boolean;
   }> {
     const results = {
       polygon: false,
       finnhub: false,
-      quiver: false,
+      secApi: false,
       cache: false,
     };
 
@@ -218,11 +201,11 @@ export class DataService {
     }
 
     try {
-      // Test Quiver with a simple request
-      await this.quiverClient.getPoliticalTrades("AAPL");
-      results.quiver = true;
+      // Test SEC API with a simple request
+      await this.secApiClient.getPoliticalTrades("AAPL");
+      results.secApi = true;
     } catch (error) {
-      console.error("Quiver health check failed:", error);
+      console.error("SEC API health check failed:", error);
     }
 
     try {
