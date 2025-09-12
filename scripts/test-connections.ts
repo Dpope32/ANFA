@@ -56,13 +56,13 @@ async function testConnections() {
 
     } catch (error) {
       console.log(`❌ Failed to fetch data for ${testSymbol}:`);
-      console.log(`  Error: ${error.message}\n`);
+      console.log(`  Error: ${error instanceof Error ? error.message : String(error)}\n`);
     }
 
     console.log('🎉 Connection test completed!');
 
   } catch (error) {
-    console.error('❌ Test failed:', error.message);
+    console.error('❌ Test failed:', error instanceof Error ? error.message : String(error));
     console.log('\n💡 Make sure you have:');
     console.log('  1. Set up your .env file with API keys');
     console.log('  2. Redis server running (optional)');

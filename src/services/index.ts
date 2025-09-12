@@ -5,4 +5,4 @@ export { DataService } from "./dataService";
 export { FinnhubClient } from "./finnhubClient";
 export { PolygonClient } from "./polygonClient";
 export { PredictionService } from "./predictionService";
-export { SecApiClient } from "./secApiClient";
+export { QuiverClient } from "./quiverClient";

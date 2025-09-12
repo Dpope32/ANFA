@@ -6,32 +6,52 @@ import { DataSource } from "../types";
  * Redis-based cache service with source-specific TTL
  */
 export class CacheService {
-  private redis: Redis;
+  private redis: Redis | null = null;
   private isConnected: boolean = false;
 
   constructor() {
-    this.redis = new Redis(config.redis.url, {
-      password: config.redis.password,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-    });
+    try {
+      this.redis = new Redis(config.redis.url, {
+        password: config.redis.password,
+        maxRetriesPerRequest: 3,
+        lazyConnect: true,
+        connectTimeout: 5000,
+      });
 
-    this.redis.on("connect", () => {
-      this.isConnected = true;
-      console.log("Redis connected successfully");
-    });
+      this.redis.on("connect", () => {
+        this.isConnected = true;
+        console.log("Redis connected successfully");
+      });
 
-    this.redis.on("error", (error) => {
+      this.redis.on("error", (error) => {
+        this.isConnected = false;
+        console.warn("Redis connection error (cache disabled):", error instanceof Error ? error.message : String(error));
+      });
+
+      this.redis.on("close", () => {
+        this.isConnected = false;
+        console.warn("Redis connection closed (cache disabled)");
+      });
+
+      // Try to connect with timeout
+      if (this.redis) {
+        this.redis.connect().catch((error) => {
+          this.isConnected = false;
+          console.warn("Redis connection failed (cache disabled):", error instanceof Error ? error.message : String(error));
+        });
+      }
+    } catch (error) {
       this.isConnected = false;
-      console.error("Redis connection error:", error);
-    });
+      this.redis = null;
+      console.warn("Redis initialization failed (cache disabled):", error instanceof Error ? error.message : "Unknown error");
+    }
   }
 
   /**
    * Get cached data by key
    */
   async get<T>(key: string): Promise<T | null> {
-    if (!this.isConnected) {
+    if (!this.isConnected || !this.redis) {
       return null;
     }
 
@@ -42,7 +62,8 @@ export class CacheService {
       }
       return null;
     } catch (error) {
-      console.error(`Cache get error for key ${key}:`, error);
+      console.warn(`Cache get error for key ${key}:`, error instanceof Error ? error.message : "Unknown error");
+      this.isConnected = false;
       return null;
     }
   }
@@ -51,7 +72,7 @@ export class CacheService {
    * Set cached data with TTL
    */
   async set<T>(key: string, data: T, ttlSeconds: number): Promise<boolean> {
-    if (!this.isConnected) {
+    if (!this.isConnected || !this.redis) {
       return false;
     }
 
@@ -59,7 +80,8 @@ export class CacheService {
       await this.redis.setex(key, ttlSeconds, JSON.stringify(data));
       return true;
     } catch (error) {
-      console.error(`Cache set error for key ${key}:`, error);
+      console.warn(`Cache set error for key ${key}:`, error instanceof Error ? error.message : "Unknown error");
+      this.isConnected = false;
       return false;
     }
   }
@@ -81,7 +103,7 @@ export class CacheService {
    * Clear cache for specific symbol and source
    */
   async clearSymbol(source: DataSource, symbol: string): Promise<boolean> {
-    if (!this.isConnected) {
+    if (!this.isConnected || !this.redis) {
       return false;
     }
 
@@ -93,7 +115,8 @@ export class CacheService {
       }
       return true;
     } catch (error) {
-      console.error(`Cache clear error for ${source}:${symbol}:`, error);
+      console.warn(`Cache clear error for ${source}:${symbol}:`, error instanceof Error ? error.message : "Unknown error");
+      this.isConnected = false;
       return false;
     }
   }
@@ -102,7 +125,7 @@ export class CacheService {
    * Get cache statistics
    */
   async getStats(): Promise<{ connected: boolean; memory: any }> {
-    if (!this.isConnected) {
+    if (!this.isConnected || !this.redis) {
       return { connected: false, memory: null };
     }
 
@@ -110,7 +133,7 @@ export class CacheService {
       const memory = await this.redis.memory("STATS");
       return { connected: true, memory };
     } catch (error) {
-      console.error("Cache stats error:", error);
+      console.warn("Cache stats error:", error instanceof Error ? error.message : "Unknown error");
       return { connected: false, memory: null };
     }
   }
@@ -120,7 +143,11 @@ export class CacheService {
    */
   async close(): Promise<void> {
     if (this.redis) {
-      await this.redis.quit();
+      try {
+        await this.redis.quit();
+      } catch (error) {
+        console.warn("Error closing Redis connection:", error instanceof Error ? error.message : "Unknown error");
+      }
     }
   }
 }
