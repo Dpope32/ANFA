@@ -1,4 +1,5 @@
 import { config, validateConfig } from "./config";
+import { ApiServer } from "./api";
 
 /**
  * Main entry point for the Stock Price Predictor application
@@ -12,8 +13,11 @@ async function main(): Promise<void> {
     console.log(`Environment: ${config.app.nodeEnv}`);
     console.log(`Port: ${config.app.port}`);
 
-    // TODO: Initialize services and start server
-    console.log("Core project structure initialized successfully!");
+    // Initialize and start the API server
+    const apiServer = new ApiServer();
+    await apiServer.start();
+    
+    console.log("Stock Price Predictor API server started successfully!");
   } catch (error) {
     console.error("Failed to start application:", error);
     process.exit(1);

@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # Redis cache service for development
+  redis:
+    image: redis:7-alpine
+    container_name: stock-predictor-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - stock-predictor-dev-network
+
+  # Stock Price Predictor API (development)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: stock-predictor-api-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - POLYGON_API_KEY=${POLYGON_API_KEY}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY}
+      - QUIVER_API_KEY=${QUIVER_API_KEY}
+      - LOG_LEVEL=debug
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: pnpm run dev
+    restart: unless-stopped
+    networks:
+      - stock-predictor-dev-network
+
+volumes:
+  redis_dev_data:
+    driver: local
+
+networks:
+  stock-predictor-dev-network:
+    driver: bridge

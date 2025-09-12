@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { ApiConfig, CacheConfig } from "../types";
 
 // Load environment variables
 dotenv.config();
@@ -7,18 +8,25 @@ dotenv.config();
  * Application configuration loaded from environment variables
  */
 export const config = {
-  // Moomoo API Configuration
-  moomoo: {
-    apiKey: process.env.MOOMOO_API_KEY || "",
-    apiSecret: process.env.MOOMOO_API_SECRET || "",
-    baseUrl: process.env.MOOMOO_BASE_URL || "https://api.moomoo.com",
+  // Polygon API Configuration
+  polygon: {
+    apiKey: process.env.POLYGON_API_KEY || "",
+    baseUrl: process.env.POLYGON_BASE_URL || "https://api.polygon.io",
+    rateLimit: parseInt(process.env.POLYGON_RATE_LIMIT || "5", 10), // requests per minute
   },
 
-  // Insider Trading API Configuration
-  insiderTrading: {
-    apiKey: process.env.INSIDER_TRADING_API_KEY || "",
-    baseUrl:
-      process.env.INSIDER_TRADING_BASE_URL || "https://api.insidertrading.com",
+  // Finnhub API Configuration
+  finnhub: {
+    apiKey: process.env.FINNHUB_API_KEY || "",
+    baseUrl: process.env.FINNHUB_BASE_URL || "https://finnhub.io/api/v1",
+    rateLimit: parseInt(process.env.FINNHUB_RATE_LIMIT || "60", 10), // requests per minute
+  },
+
+  // Quiver Quantitative API Configuration
+  quiver: {
+    apiKey: process.env.QUIVER_API_KEY || "",
+    baseUrl: process.env.QUIVER_BASE_URL || "https://api.quiverquant.com/beta",
+    rateLimit: parseInt(process.env.QUIVER_RATE_LIMIT || "10", 10), // requests per minute
   },
 
   // Redis Cache Configuration
@@ -43,10 +51,49 @@ export const config = {
 };
 
 /**
+ * API configuration for data clients
+ */
+export const apiConfig: ApiConfig = {
+  polygon: {
+    apiKey: config.polygon.apiKey,
+    baseUrl: config.polygon.baseUrl,
+    rateLimit: config.polygon.rateLimit,
+  },
+  finnhub: {
+    apiKey: config.finnhub.apiKey,
+    baseUrl: config.finnhub.baseUrl,
+    rateLimit: config.finnhub.rateLimit,
+  },
+  quiver: {
+    apiKey: config.quiver.apiKey,
+    baseUrl: config.quiver.baseUrl,
+    rateLimit: config.quiver.rateLimit,
+  },
+};
+
+/**
+ * Cache configuration per data source
+ */
+export const cacheConfig: CacheConfig = {
+  polygon: {
+    ttl: parseInt(process.env.POLYGON_CACHE_TTL || "300", 10), // 5 minutes
+    maxSize: parseInt(process.env.POLYGON_CACHE_MAX_SIZE || "1000", 10),
+  },
+  finnhub: {
+    ttl: parseInt(process.env.FINNHUB_CACHE_TTL || "3600", 10), // 1 hour
+    maxSize: parseInt(process.env.FINNHUB_CACHE_MAX_SIZE || "500", 10),
+  },
+  quiver: {
+    ttl: parseInt(process.env.QUIVER_CACHE_TTL || "1800", 10), // 30 minutes
+    maxSize: parseInt(process.env.QUIVER_CACHE_MAX_SIZE || "200", 10),
+  },
+};
+
+/**
  * Validates that required environment variables are set
  */
 export function validateConfig(): void {
-  const requiredVars = ["MOOMOO_API_KEY", "MOOMOO_API_SECRET"];
+  const requiredVars = ["POLYGON_API_KEY", "FINNHUB_API_KEY", "QUIVER_API_KEY"];
 
   const missingVars = requiredVars.filter((varName) => !process.env[varName]);
 
