@@ -1,13 +1,13 @@
-import express, { Request, Response, NextFunction } from "express";
+import compression from "compression";
 import cors from "cors";
+import express, { NextFunction, Request, Response } from "express";
 import helmet from "helmet";
 import morgan from "morgan";
-import compression from "compression";
 import { config } from "../config";
-import { PredictionService } from "../services/predictionService";
-import { DataService } from "../services/dataService";
 import { ChartService } from "../services/chartService";
-import { PredictionResult, ChartData, ApiError } from "../types";
+import { DataService } from "../services/dataService";
+import { PredictionService } from "../services/predictionService";
+import { ApiError } from "../types";
 
 /**
  * Express.js API server for stock price prediction
@@ -23,7 +23,7 @@ export class ApiServer {
     this.predictionService = new PredictionService();
     this.dataService = new DataService();
     this.chartService = new ChartService();
-    
+
     this.setupMiddleware();
     this.setupRoutes();
     this.setupErrorHandling();
@@ -35,20 +35,27 @@ export class ApiServer {
   private setupMiddleware(): void {
     // Security middleware
     this.app.use(helmet());
-    
+
     // CORS configuration
-    this.app.use(cors({
-      origin: config.app.nodeEnv === "production" 
-        ? process.env.ALLOWED_ORIGINS?.split(",") || ["http://localhost:3000"]
-        : true,
-      credentials: true,
-    }));
+    this.app.use(
+      cors({
+        origin:
+          config.app.nodeEnv === "production"
+            ? process.env.ALLOWED_ORIGINS?.split(",") || [
+                "http://localhost:3000",
+              ]
+            : true,
+        credentials: true,
+      })
+    );
 
     // Compression middleware
     this.app.use(compression());
 
     // Logging middleware
-    this.app.use(morgan(config.app.nodeEnv === "production" ? "combined" : "dev"));
+    this.app.use(
+      morgan(config.app.nodeEnv === "production" ? "combined" : "dev")
+    );
 
     // Body parsing middleware
     this.app.use(express.json({ limit: "10mb" }));
@@ -70,101 +77,124 @@ export class ApiServer {
     });
 
     // Main prediction endpoint
-    this.app.post("/api/predict", this.validatePredictionRequest, async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        const { symbol, timeframe = "30d" } = req.body;
-        
-        // Get comprehensive stock data
-        const stockData = await this.dataService.getStockData(symbol);
-        
-        // Generate predictions
-        const prediction = await this.predictionService.predict(stockData, timeframe);
-        
-        // Generate chart data
-        const chartData = await this.chartService.generateChartData(stockData, prediction);
-        
-        res.json({
-          success: true,
-          data: {
-            prediction,
-            chartData,
-            metadata: {
-              symbol,
-              timeframe,
-              generatedAt: new Date().toISOString(),
-              dataSources: this.getDataSources(stockData),
+    this.app.post(
+      "/api/predict",
+      this.validatePredictionRequest,
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { symbol, timeframe = "30d" } = req.body;
+
+          // Get comprehensive stock data
+          const stockData = await this.dataService.getStockData(symbol);
+
+          // Generate predictions
+          const prediction = await this.predictionService.predict(
+            stockData,
+            timeframe
+          );
+
+          // Generate chart data
+          const chartData = await this.chartService.generateChartData(
+            stockData,
+            prediction
+          );
+
+          res.json({
+            success: true,
+            data: {
+              prediction,
+              chartData,
+              metadata: {
+                symbol,
+                timeframe,
+                generatedAt: new Date().toISOString(),
+                dataSources: this.getDataSources(stockData),
+              },
             },
-          },
-        });
-      } catch (error) {
-        next(error);
+          });
+        } catch (error) {
+          next(error);
+        }
       }
-    });
+    );
 
     // Get stock data only (without prediction)
-    this.app.get("/api/stock/:symbol", async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        const { symbol } = req.params;
-        const stockData = await this.dataService.getStockData(symbol);
-        
-        res.json({
-          success: true,
-          data: {
-            stockData,
-            metadata: {
-              symbol,
-              retrievedAt: new Date().toISOString(),
-              dataSources: this.getDataSources(stockData),
+    this.app.get(
+      "/api/stock/:symbol",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { symbol } = req.params;
+          const stockData = await this.dataService.getStockData(symbol);
+
+          res.json({
+            success: true,
+            data: {
+              stockData,
+              metadata: {
+                symbol,
+                retrievedAt: new Date().toISOString(),
+                dataSources: this.getDataSources(stockData),
+              },
             },
-          },
-        });
-      } catch (error) {
-        next(error);
+          });
+        } catch (error) {
+          next(error);
+        }
       }
-    });
+    );
 
     // Get chart data for existing prediction
-    this.app.post("/api/chart", this.validateChartRequest, async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        const { stockData, prediction } = req.body;
-        const chartData = await this.chartService.generateChartData(stockData, prediction);
-        
-        res.json({
-          success: true,
-          data: {
-            chartData,
-            metadata: {
-              generatedAt: new Date().toISOString(),
+    this.app.post(
+      "/api/chart",
+      this.validateChartRequest,
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { stockData, prediction } = req.body;
+          const chartData = await this.chartService.generateChartData(
+            stockData,
+            prediction
+          );
+
+          res.json({
+            success: true,
+            data: {
+              chartData,
+              metadata: {
+                generatedAt: new Date().toISOString(),
+              },
             },
-          },
-        });
-      } catch (error) {
-        next(error);
+          });
+        } catch (error) {
+          next(error);
+        }
       }
-    });
+    );
 
     // Get system status and cache statistics
-    this.app.get("/api/status", async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        const cacheStats = await this.dataService.getCacheStats();
-        const modelStats = await this.predictionService.getModelStats();
-        
-        res.json({
-          success: true,
-          data: {
-            cache: cacheStats,
-            model: modelStats,
-            system: {
-              uptime: process.uptime(),
-              memory: process.memoryUsage(),
-              timestamp: new Date().toISOString(),
+    this.app.get(
+      "/api/status",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const cacheStats = await this.dataService.getCacheStats();
+          const modelStats = await this.predictionService.getModelStats();
+
+          res.json({
+            success: true,
+            data: {
+              cache: cacheStats,
+              model: modelStats,
+              system: {
+                uptime: process.uptime(),
+                memory: process.memoryUsage(),
+                timestamp: new Date().toISOString(),
+              },
             },
-          },
-        });
-      } catch (error) {
-        next(error);
+          });
+        } catch (error) {
+          next(error);
+        }
       }
-    });
+    );
 
     // 404 handler
     this.app.use("*", (req: Request, res: Response) => {
@@ -182,94 +212,107 @@ export class ApiServer {
    * Setup error handling middleware
    */
   private setupErrorHandling(): void {
-    this.app.use((error: any, req: Request, res: Response, next: NextFunction) => {
-      console.error("API Error:", error);
+    this.app.use(
+      (error: any, req: Request, res: Response, next: NextFunction): void => {
+        console.error("API Error:", error);
 
-      // Handle known API errors
-      if (error instanceof ApiError) {
-        return res.status(error.statusCode).json({
+        // Handle known API errors
+        if (error instanceof ApiError) {
+          res.status(error.statusCode).json({
+            success: false,
+            error: {
+              code: error.code,
+              message: error.message,
+              details: error.details,
+            },
+          });
+          return;
+        }
+
+        // Handle validation errors
+        if (error.name === "ValidationError") {
+          res.status(400).json({
+            success: false,
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "Invalid request data",
+              details: error.message,
+            },
+          });
+          return;
+        }
+
+        // Handle rate limit errors
+        if (error.message?.includes("rate limit")) {
+          res.status(429).json({
+            success: false,
+            error: {
+              code: "RATE_LIMIT_EXCEEDED",
+              message: "API rate limit exceeded. Please try again later.",
+            },
+          });
+          return;
+        }
+
+        // Handle generic errors
+        res.status(500).json({
           success: false,
           error: {
-            code: error.code,
-            message: error.message,
-            details: error.details,
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              config.app.nodeEnv === "production"
+                ? "An internal server error occurred"
+                : error.message,
           },
         });
       }
-
-      // Handle validation errors
-      if (error.name === "ValidationError") {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: "VALIDATION_ERROR",
-            message: "Invalid request data",
-            details: error.message,
-          },
-        });
-      }
-
-      // Handle rate limit errors
-      if (error.message?.includes("rate limit")) {
-        return res.status(429).json({
-          success: false,
-          error: {
-            code: "RATE_LIMIT_EXCEEDED",
-            message: "API rate limit exceeded. Please try again later.",
-          },
-        });
-      }
-
-      // Handle generic errors
-      res.status(500).json({
-        success: false,
-        error: {
-          code: "INTERNAL_SERVER_ERROR",
-          message: config.app.nodeEnv === "production" 
-            ? "An internal server error occurred" 
-            : error.message,
-        },
-      });
-    });
+    );
   }
 
   /**
    * Validate prediction request
    */
-  private validatePredictionRequest = (req: Request, res: Response, next: NextFunction): void => {
+  private validatePredictionRequest = (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): void => {
     const { symbol } = req.body;
 
     if (!symbol || typeof symbol !== "string" || symbol.trim().length === 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: {
           code: "INVALID_SYMBOL",
           message: "Symbol is required and must be a non-empty string",
         },
       });
+      return;
     }
 
     // Validate symbol format (basic validation)
     if (!/^[A-Z]{1,5}$/.test(symbol.trim().toUpperCase())) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: {
           code: "INVALID_SYMBOL_FORMAT",
           message: "Symbol must be 1-5 uppercase letters",
         },
       });
+      return;
     }
 
     // Validate timeframe if provided
     const { timeframe } = req.body;
     if (timeframe && !["7d", "14d", "30d", "60d", "90d"].includes(timeframe)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: {
           code: "INVALID_TIMEFRAME",
           message: "Timeframe must be one of: 7d, 14d, 30d, 60d, 90d",
         },
       });
+      return;
     }
 
     next();
@@ -278,17 +321,22 @@ export class ApiServer {
   /**
    * Validate chart request
    */
-  private validateChartRequest = (req: Request, res: Response, next: NextFunction): void => {
+  private validateChartRequest = (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): void => {
     const { stockData, prediction } = req.body;
 
     if (!stockData || !prediction) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: {
           code: "MISSING_DATA",
           message: "Both stockData and prediction are required",
         },
       });
+      return;
     }
 
     next();
@@ -299,7 +347,7 @@ export class ApiServer {
    */
   private getDataSources(stockData: any): string[] {
     const sources: string[] = [];
-    
+
     if (stockData.marketData?.source) {
       sources.push(stockData.marketData.source);
     }
@@ -312,7 +360,7 @@ export class ApiServer {
     if (stockData.insiderActivity?.length > 0) {
       sources.push("quiver");
     }
-    
+
     return [...new Set(sources)];
   }
 
@@ -323,10 +371,16 @@ export class ApiServer {
     return new Promise((resolve, reject) => {
       try {
         const server = this.app.listen(config.app.port, () => {
-          console.log(`🚀 Stock Price Predictor API server running on port ${config.app.port}`);
+          console.log(
+            `🚀 Stock Price Predictor API server running on port ${config.app.port}`
+          );
           console.log(`📊 Environment: ${config.app.nodeEnv}`);
-          console.log(`🔗 Health check: http://localhost:${config.app.port}/health`);
-          console.log(`📈 Prediction endpoint: http://localhost:${config.app.port}/api/predict`);
+          console.log(
+            `🔗 Health check: http://localhost:${config.app.port}/health`
+          );
+          console.log(
+            `📈 Prediction endpoint: http://localhost:${config.app.port}/api/predict`
+          );
           resolve();
         });
 
@@ -365,5 +419,4 @@ export class ApiServer {
   }
 }
 
-// Export the ApiServer class
-export { ApiServer };
+// ApiServer is already exported above

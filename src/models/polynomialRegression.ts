@@ -1,3 +1,5 @@
+import { getErrorMessage } from "../utils/errors";
+
 /**
  * Polynomial regression model for stock price prediction
  */
@@ -16,20 +18,22 @@ export class PolynomialRegression {
     try {
       const prices = features.prices;
       const dates = features.dates;
-      
+
       if (prices.length < this.degree + 1) {
         throw new Error("Insufficient data points for polynomial regression");
       }
 
       // Convert dates to numeric values (days since first date)
       const firstDate = new Date(dates[0]);
-      const numericDates = dates.map((date: Date) => 
-        (new Date(date).getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)
+      const numericDates = dates.map(
+        (date: Date) =>
+          (new Date(date).getTime() - firstDate.getTime()) /
+          (1000 * 60 * 60 * 24)
       );
 
       // Calculate polynomial coefficients using least squares
       this.coefficients = this.calculateCoefficients(numericDates, prices);
-      
+
       return {
         coefficients: this.coefficients,
         degree: this.degree,
@@ -38,7 +42,7 @@ export class PolynomialRegression {
       };
     } catch (error) {
       console.error("Polynomial regression fit failed:", error);
-      throw new Error(`Model fitting failed: ${error.message}`);
+      throw new Error(`Model fitting failed: ${getErrorMessage(error)}`);
     }
   }
 
@@ -50,21 +54,26 @@ export class PolynomialRegression {
       const predictions: number[] = [];
       const days = this.parseTimeframe(timeframe);
       const lastDate = model.lastDate;
-      
+
       for (let i = 1; i <= days; i++) {
         const futureDate = new Date(lastDate);
         futureDate.setDate(futureDate.getDate() + i);
-        
-        const daysSinceFirst = (futureDate.getTime() - model.firstDate.getTime()) / (1000 * 60 * 60 * 24);
-        const prediction = this.evaluatePolynomial(daysSinceFirst, model.coefficients);
-        
+
+        const daysSinceFirst =
+          (futureDate.getTime() - model.firstDate.getTime()) /
+          (1000 * 60 * 60 * 24);
+        const prediction = this.evaluatePolynomial(
+          daysSinceFirst,
+          model.coefficients
+        );
+
         predictions.push(prediction);
       }
-      
+
       return predictions;
     } catch (error) {
       console.error("Polynomial regression prediction failed:", error);
-      throw new Error(`Prediction failed: ${error.message}`);
+      throw new Error(`Prediction failed: ${getErrorMessage(error)}`);
     }
   }
 
@@ -74,7 +83,7 @@ export class PolynomialRegression {
   private calculateCoefficients(x: number[], y: number[]): number[] {
     const n = x.length;
     const m = this.degree + 1;
-    
+
     // Create Vandermonde matrix
     const A: number[][] = [];
     for (let i = 0; i < n; i++) {
@@ -83,12 +92,12 @@ export class PolynomialRegression {
         A[i][j] = Math.pow(x[i], j);
       }
     }
-    
+
     // Solve normal equations: A^T * A * c = A^T * y
     const AT = this.transpose(A);
     const ATA = this.multiply(AT, A);
     const ATy = this.multiplyVector(AT, y);
-    
+
     // Solve the system using Gaussian elimination
     return this.solveLinearSystem(ATA, ATy);
   }
@@ -119,14 +128,14 @@ export class PolynomialRegression {
     const rows = matrix.length;
     const cols = matrix[0].length;
     const result: number[][] = [];
-    
+
     for (let i = 0; i < cols; i++) {
       result[i] = [];
       for (let j = 0; j < rows; j++) {
         result[i][j] = matrix[j][i];
       }
     }
-    
+
     return result;
   }
 
@@ -137,7 +146,7 @@ export class PolynomialRegression {
     const rows = A.length;
     const cols = B[0].length;
     const result: number[][] = [];
-    
+
     for (let i = 0; i < rows; i++) {
       result[i] = [];
       for (let j = 0; j < cols; j++) {
@@ -147,7 +156,7 @@ export class PolynomialRegression {
         }
       }
     }
-    
+
     return result;
   }
 
@@ -156,14 +165,14 @@ export class PolynomialRegression {
    */
   private multiplyVector(matrix: number[][], vector: number[]): number[] {
     const result: number[] = [];
-    
+
     for (let i = 0; i < matrix.length; i++) {
       result[i] = 0;
       for (let j = 0; j < matrix[i].length; j++) {
         result[i] += matrix[i][j] * vector[j];
       }
     }
-    
+
     return result;
   }
 
@@ -173,12 +182,12 @@ export class PolynomialRegression {
   private solveLinearSystem(A: number[][], b: number[]): number[] {
     const n = A.length;
     const augmented: number[][] = [];
-    
+
     // Create augmented matrix
     for (let i = 0; i < n; i++) {
       augmented[i] = [...A[i], b[i]];
     }
-    
+
     // Forward elimination
     for (let i = 0; i < n; i++) {
       // Find pivot
@@ -188,10 +197,10 @@ export class PolynomialRegression {
           maxRow = k;
         }
       }
-      
+
       // Swap rows
       [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
-      
+
       // Make all rows below this one 0 in current column
       for (let k = i + 1; k < n; k++) {
         const factor = augmented[k][i] / augmented[i][i];
@@ -200,7 +209,7 @@ export class PolynomialRegression {
         }
       }
     }
-    
+
     // Back substitution
     const solution: number[] = new Array(n);
     for (let i = n - 1; i >= 0; i--) {
@@ -210,7 +219,7 @@ export class PolynomialRegression {
       }
       solution[i] /= augmented[i][i];
     }
-    
+
     return solution;
   }
 }

@@ -12,7 +12,6 @@ export class CacheService {
   constructor() {
     this.redis = new Redis(config.redis.url, {
       password: config.redis.password,
-      retryDelayOnFailover: 100,
       maxRetriesPerRequest: 3,
       lazyConnect: true,
     });
@@ -68,7 +67,12 @@ export class CacheService {
   /**
    * Generate cache key for data source
    */
-  generateKey(source: DataSource, symbol: string, endpoint: string, params?: Record<string, any>): string {
+  generateKey(
+    source: DataSource,
+    symbol: string,
+    endpoint: string,
+    params?: Record<string, any>
+  ): string {
     const paramString = params ? `_${JSON.stringify(params)}` : "";
     return `${source}:${symbol}:${endpoint}${paramString}`;
   }
@@ -103,7 +107,7 @@ export class CacheService {
     }
 
     try {
-      const memory = await this.redis.memory("usage");
+      const memory = await this.redis.memory("STATS");
       return { connected: true, memory };
     } catch (error) {
       console.error("Cache stats error:", error);

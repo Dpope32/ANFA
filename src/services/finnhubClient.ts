@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from "axios";
-import { FundamentalData, ApiResponse, DataSource } from "../types";
 import { apiConfig, cacheConfig } from "../config";
+import { ApiResponse, FundamentalData } from "../types";
 import { cacheService } from "./cache";
 
 /**
@@ -33,7 +33,11 @@ export class FinnhubClient {
    * Get fundamental data for a symbol
    */
   async getFundamentals(symbol: string): Promise<ApiResponse<FundamentalData>> {
-    const cacheKey = cacheService.generateKey("finnhub", symbol, "fundamentals");
+    const cacheKey = cacheService.generateKey(
+      "finnhub",
+      symbol,
+      "fundamentals"
+    );
 
     // Try cache first
     const cached = await cacheService.get<FundamentalData>(cacheKey);
@@ -69,7 +73,11 @@ export class FinnhubClient {
       };
 
       // Cache the result
-      await cacheService.set(cacheKey, fundamentalData, cacheConfig.finnhub.ttl);
+      await cacheService.set(
+        cacheKey,
+        fundamentalData,
+        cacheConfig.finnhub.ttl
+      );
 
       return {
         data: fundamentalData,
@@ -79,17 +87,24 @@ export class FinnhubClient {
         rateLimit: this.extractRateLimit(profileResponse),
       };
     } catch (error) {
-      throw this.handleError(error, `Failed to fetch fundamentals for ${symbol}`);
+      throw this.handleError(
+        error,
+        `Failed to fetch fundamentals for ${symbol}`
+      );
     }
   }
 
   /**
    * Get company news
    */
-  async getCompanyNews(symbol: string, from: Date, to: Date): Promise<ApiResponse<any[]>> {
+  async getCompanyNews(
+    symbol: string,
+    from: Date,
+    to: Date
+  ): Promise<ApiResponse<any[]>> {
     const cacheKey = cacheService.generateKey("finnhub", symbol, "news", {
-      from: from.toISOString().split('T')[0],
-      to: to.toISOString().split('T')[0]
+      from: from.toISOString().split("T")[0],
+      to: to.toISOString().split("T")[0],
     });
 
     // Try cache first
@@ -107,8 +122,8 @@ export class FinnhubClient {
       const response = await this.client.get(`/company-news`, {
         params: {
           symbol,
-          from: from.toISOString().split('T')[0],
-          to: to.toISOString().split('T')[0],
+          from: from.toISOString().split("T")[0],
+          to: to.toISOString().split("T")[0],
         },
       });
 
@@ -164,7 +179,10 @@ export class FinnhubClient {
         rateLimit: this.extractRateLimit(response),
       };
     } catch (error) {
-      throw this.handleError(error, `Failed to fetch earnings calendar for ${symbol}`);
+      throw this.handleError(
+        error,
+        `Failed to fetch earnings calendar for ${symbol}`
+      );
     }
   }
 
@@ -175,19 +193,20 @@ export class FinnhubClient {
     const now = Date.now();
     const minute = Math.floor(now / 60000);
     const key = `finnhub_${minute}`;
-    
+
     const currentCount = this.rateLimitTracker.get(key) || 0;
-    
+
     if (currentCount >= apiConfig.finnhub.rateLimit) {
       const waitTime = 60000 - (now % 60000);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
-    
+
     this.rateLimitTracker.set(key, currentCount + 1);
-    
+
     // Clean up old entries
     for (const [k] of this.rateLimitTracker) {
-      if (parseInt(k.split('_')[1]) < minute - 1) {
+      const parts = k.split("_");
+      if (parts[1] && parseInt(parts[1]) < minute - 1) {
         this.rateLimitTracker.delete(k);
       }
     }
@@ -196,17 +215,19 @@ export class FinnhubClient {
   /**
    * Extract rate limit information from response headers
    */
-  private extractRateLimit(response: AxiosResponse): { remaining: number; resetTime: Date } | undefined {
-    const remaining = response.headers['x-ratelimit-remaining'];
-    const resetTime = response.headers['x-ratelimit-reset'];
-    
+  private extractRateLimit(
+    response: AxiosResponse
+  ): { remaining: number; resetTime: Date } | undefined {
+    const remaining = response.headers["x-ratelimit-remaining"];
+    const resetTime = response.headers["x-ratelimit-reset"];
+
     if (remaining && resetTime) {
       return {
         remaining: parseInt(remaining),
         resetTime: new Date(parseInt(resetTime) * 1000),
       };
     }
-    
+
     return undefined;
   }
 
@@ -217,7 +238,7 @@ export class FinnhubClient {
     if (error.response) {
       const status = error.response.status;
       const message = error.response.data?.error || error.response.statusText;
-      
+
       switch (status) {
         case 401:
           throw new Error(`Finnhub API authentication failed: ${message}`);

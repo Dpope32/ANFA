@@ -7,7 +7,7 @@ No more "trust me, it works" - here's how to actually test your implementation!
 ### 1. Basic Verification (No API Keys Required)
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 This will test:
@@ -22,7 +22,7 @@ This will test:
 ### 2. Unit Tests (Mocked APIs)
 
 ```bash
-npm test
+pnpm test
 ```
 
 This runs comprehensive unit tests with mocked API responses.
@@ -30,7 +30,7 @@ This runs comprehensive unit tests with mocked API responses.
 ### 3. Live API Testing (Requires API Keys)
 
 ```bash
-npm run test:connections
+pnpm run test:connections
 ```
 
 This tests actual API connections and data fetching.
@@ -76,7 +76,7 @@ REDIS_URL=redis://localhost:6379
 
 ```bash
 # Install test dependencies
-npm install
+pnpm install
 
 # Start Redis (optional, for cache testing)
 redis-server
@@ -86,11 +86,11 @@ redis-server
 
 | Command | Purpose | Requirements |
 |---------|---------|--------------|
-| `npm run verify` | Basic implementation check | None |
-| `npm test` | Unit tests with mocks | None |
-| `npm run test:watch` | Unit tests in watch mode | None |
-| `npm run test:coverage` | Unit tests with coverage report | None |
-| `npm run test:connections` | Live API testing | API keys |
+| `pnpm run verify` | Basic implementation check | None |
+| `pnpm test` | Unit tests with mocks | None |
+| `pnpm run test:watch` | Unit tests in watch mode | None |
+| `pnpm run test:coverage` | Unit tests with coverage report | None |
+| `pnpm run test:connections` | Live API testing | API keys |
 
 ## 🎯 What Each Test Validates
 
@@ -230,13 +230,13 @@ Health Status:
 
 ```bash
 # Run tests with debug output
-DEBUG=* npm test
+DEBUG=* pnpm test
 
 # Run specific test file
-npm test -- cache.test.ts
+pnpm test -- cache.test.ts
 
 # Run tests with verbose output
-npm test -- --verbose
+pnpm test -- --verbose
 ```
 
 ## 📈 Coverage Reports
@@ -244,7 +244,7 @@ npm test -- --verbose
 Generate coverage reports to see which code is tested:
 
 ```bash
-npm run test:coverage
+pnpm run test:coverage
 ```
 
 This creates a `coverage/` directory with HTML reports showing:
@@ -267,9 +267,9 @@ The test suite is designed to work in CI/CD pipelines:
 
 Your implementation is working correctly when:
 
-- ✅ `npm run verify` passes all tests
-- ✅ `npm test` shows 100% test coverage
-- ✅ `npm run test:connections` successfully fetches data
+- ✅ `pnpm run verify` passes all tests
+- ✅ `pnpm test` shows 100% test coverage
+- ✅ `pnpm run test:connections` successfully fetches data
 - ✅ All health checks return "Connected"
 - ✅ Data aggregation works with real APIs
 - ✅ Error handling works gracefully

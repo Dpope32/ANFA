@@ -257,10 +257,12 @@ export interface ApiResponse<T> {
   source: DataSource;
   timestamp: Date;
   cached: boolean;
-  rateLimit?: {
-    remaining: number;
-    resetTime: Date;
-  };
+  rateLimit?:
+    | {
+        remaining: number;
+        resetTime: Date;
+      }
+    | undefined;
 }
 
 /**
@@ -271,7 +273,12 @@ export class ApiError extends Error {
   public code: string;
   public details?: any;
 
-  constructor(message: string, statusCode: number = 500, code: string = "API_ERROR", details?: any) {
+  constructor(
+    message: string,
+    statusCode: number = 500,
+    code: string = "API_ERROR",
+    details?: any
+  ) {
     super(message);
     this.name = "ApiError";
     this.statusCode = statusCode;

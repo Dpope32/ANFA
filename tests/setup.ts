@@ -1,7 +1,7 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 
 // Load test environment variables
-dotenv.config({ path: '.env.test' });
+dotenv.config({ path: ".env.test" });
 
 // Mock console methods to reduce noise in tests
 global.console = {
@@ -15,8 +15,8 @@ global.console = {
 };
 
 // Set test environment variables
-process.env.NODE_ENV = 'test';
-process.env.REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+process.env.NODE_ENV = "test";
+process.env.REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
 // Increase timeout for integration tests
 jest.setTimeout(30000);

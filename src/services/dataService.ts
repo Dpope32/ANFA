@@ -1,8 +1,15 @@
-import { StockData, MarketData, FundamentalData, PoliticianTrade, InsiderActivity, OptionsFlow, ApiResponse } from "../types";
-import { PolygonClient } from "./polygonClient";
-import { FinnhubClient } from "./finnhubClient";
-import { QuiverClient } from "./quiverClient";
+import {
+  FundamentalData,
+  InsiderActivity,
+  MarketData,
+  OptionsFlow,
+  PoliticianTrade,
+  StockData,
+} from "../types";
 import { cacheService } from "./cache";
+import { FinnhubClient } from "./finnhubClient";
+import { PolygonClient } from "./polygonClient";
+import { QuiverClient } from "./quiverClient";
 
 /**
  * Comprehensive data service that aggregates data from multiple sources
@@ -22,8 +29,8 @@ export class DataService {
    * Get comprehensive stock data from all available sources
    */
   async getStockData(symbol: string): Promise<StockData> {
-    const cacheKey = cacheService.generateKey("comprehensive", symbol, "stockData");
-    
+    const cacheKey = cacheService.generateKey("polygon", symbol, "stockData");
+
     // Try cache first
     const cached = await cacheService.get<StockData>(cacheKey);
     if (cached) {
@@ -32,7 +39,13 @@ export class DataService {
 
     try {
       // Fetch data from all sources in parallel
-      const [marketData, fundamentals, politicalTrades, insiderActivity, optionsFlow] = await Promise.allSettled([
+      const [
+        marketData,
+        fundamentals,
+        politicalTrades,
+        insiderActivity,
+        optionsFlow,
+      ] = await Promise.allSettled([
         this.getMarketData(symbol),
         this.getFundamentalData(symbol),
         this.getPoliticalTrades(symbol),
@@ -42,11 +55,20 @@ export class DataService {
 
       const stockData: StockData = {
         symbol: symbol.toUpperCase(),
-        marketData: marketData.status === "fulfilled" ? marketData.value : this.getEmptyMarketData(symbol),
-        fundamentals: fundamentals.status === "fulfilled" ? fundamentals.value : this.getEmptyFundamentalData(symbol),
-        politicalTrades: politicalTrades.status === "fulfilled" ? politicalTrades.value : [],
-        insiderActivity: insiderActivity.status === "fulfilled" ? insiderActivity.value : [],
-        optionsFlow: optionsFlow.status === "fulfilled" ? optionsFlow.value : [],
+        marketData:
+          marketData.status === "fulfilled"
+            ? marketData.value
+            : this.getEmptyMarketData(symbol),
+        fundamentals:
+          fundamentals.status === "fulfilled"
+            ? fundamentals.value
+            : this.getEmptyFundamentalData(symbol),
+        politicalTrades:
+          politicalTrades.status === "fulfilled" ? politicalTrades.value : [],
+        insiderActivity:
+          insiderActivity.status === "fulfilled" ? insiderActivity.value : [],
+        optionsFlow:
+          optionsFlow.status === "fulfilled" ? optionsFlow.value : [],
         timestamp: new Date(),
       };
 
@@ -56,7 +78,11 @@ export class DataService {
       return stockData;
     } catch (error) {
       console.error(`Failed to get stock data for ${symbol}:`, error);
-      throw new Error(`Failed to retrieve stock data for ${symbol}: ${error.message}`);
+      throw new Error(
+        `Failed to retrieve stock data for ${symbol}: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   }
 
@@ -68,7 +94,11 @@ export class DataService {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 365); // 1 year of data
 
-    const response = await this.polygonClient.getMarketData(symbol, startDate, endDate);
+    const response = await this.polygonClient.getMarketData(
+      symbol,
+      startDate,
+      endDate
+    );
     return response.data;
   }
 
@@ -149,10 +179,10 @@ export class DataService {
       cacheService.clearSymbol("polygon", symbol),
       cacheService.clearSymbol("finnhub", symbol),
       cacheService.clearSymbol("quiver", symbol),
-      cacheService.clearSymbol("comprehensive", symbol),
+      cacheService.clearSymbol("polygon", symbol),
     ]);
-    
-    return results.every(result => result);
+
+    return results.every((result) => result);
   }
 
   /**

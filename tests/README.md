@@ -20,20 +20,20 @@ tests/
 
 ```bash
 # Run all tests
-npm test
+pnpm test
 
 # Run tests in watch mode
-npm run test:watch
+pnpm run test:watch
 
 # Run tests with coverage
-npm run test:coverage
+pnpm run test:coverage
 ```
 
 ### Integration Tests
 
 ```bash
 # Test API connections (requires valid API keys)
-npm run test:connections
+pnpm run test:connections
 ```
 
 ## Test Categories
@@ -148,10 +148,10 @@ describe('DataService Integration', () => {
 
 ```bash
 # Run tests with debug output
-DEBUG=* npm test
+DEBUG=* pnpm test
 
 # Run specific test file
-npm test -- cache.test.ts
+pnpm test -- cache.test.ts
 ```
 
 ## Continuous Integration
@@ -167,7 +167,7 @@ Tests are designed to run in CI/CD pipelines:
 For performance testing, use the connection test script:
 
 ```bash
-npm run test:connections
+pnpm run test:connections
 ```
 
 This will:
