@@ -56,9 +56,9 @@ export interface StockData {
   symbol: string;
   marketData: MarketData;
   fundamentals: FundamentalData;
-  politicalTrades?: PoliticianTrade[];
-  insiderActivity?: InsiderActivity[];
-
+  politicalTrades: PoliticianTrade[];
+  insiderActivity: InsiderActivity[];
+  optionsFlow: OptionsFlow[];
   timestamp: Date;
 }
 
@@ -96,7 +96,7 @@ export interface AccuracyMetrics {
 }
 
 /**
- * Political trading data from SEC API
+ * Political trading data from Quiver API
  */
 export interface PoliticianTrade {
   politician: string;
@@ -110,11 +110,11 @@ export interface PoliticianTrade {
   date: Date;
   reportDate: Date;
   impact: "HIGH" | "MEDIUM" | "LOW";
-  source: "secapi";
+  source: "quiver";
 }
 
 /**
- * Insider activity data from SEC API
+ * Insider activity data from Quiver API
  */
 export interface InsiderActivity {
   insider: string;
@@ -126,7 +126,23 @@ export interface InsiderActivity {
   value: number;
   date: Date;
   filingDate: Date;
-  source: "secapi";
+  source: "quiver";
+}
+
+/**
+ * Options flow data from Quiver API
+ */
+export interface OptionsFlow {
+  symbol: string;
+  expiration: Date;
+  strike: number;
+  type: "CALL" | "PUT";
+  premium: number;
+  volume: number;
+  openInterest: number;
+  sentiment: "BULLISH" | "BEARISH" | "NEUTRAL";
+  date: Date;
+  source: "quiver";
 }
 
 /**
@@ -192,7 +208,7 @@ export interface ModelStats {
 /**
  * Data source enumeration
  */
-export type DataSource = "polygon" | "finnhub" | "secapi";
+export type DataSource = "polygon" | "finnhub" | "quiver";
 
 /**
  * API client configuration
@@ -208,7 +224,7 @@ export interface ApiConfig {
     baseUrl: string;
     rateLimit: number;
   };
-  secApi: {
+  quiver: {
     apiKey: string;
     baseUrl: string;
     rateLimit: number;
@@ -227,7 +243,7 @@ export interface CacheConfig {
     ttl: number;
     maxSize: number;
   };
-  secApi: {
+  quiver: {
     ttl: number;
     maxSize: number;
   };

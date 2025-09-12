@@ -2,13 +2,14 @@ import {
   FundamentalData,
   InsiderActivity,
   MarketData,
+  OptionsFlow,
   PoliticianTrade,
   StockData,
 } from "../types";
 import { cacheService } from "./cache";
 import { FinnhubClient } from "./finnhubClient";
 import { PolygonClient } from "./polygonClient";
-import { SecApiClient } from "./secApiClient";
+import { QuiverClient } from "./quiverClient";
 
 /**
  * Comprehensive data service that aggregates data from multiple sources
@@ -16,12 +17,12 @@ import { SecApiClient } from "./secApiClient";
 export class DataService {
   private polygonClient: PolygonClient;
   private finnhubClient: FinnhubClient;
-  private secApiClient: SecApiClient;
+  private quiverClient: QuiverClient;
 
   constructor() {
     this.polygonClient = new PolygonClient();
     this.finnhubClient = new FinnhubClient();
-    this.secApiClient = new SecApiClient();
+    this.quiverClient = new QuiverClient();
   }
 
   /**
@@ -38,12 +39,13 @@ export class DataService {
 
     try {
       // Fetch data from all sources in parallel
-      const [marketData, fundamentals, politicalTrades, insiderActivity] =
+      const [marketData, fundamentals, politicalTrades, insiderActivity, optionsFlow] =
         await Promise.allSettled([
           this.getMarketData(symbol),
           this.getFundamentalData(symbol),
           this.getPoliticalTrades(symbol),
           this.getInsiderActivity(symbol),
+          this.getOptionsFlow(symbol),
         ]);
 
       const stockData: StockData = {
@@ -60,7 +62,8 @@ export class DataService {
           politicalTrades.status === "fulfilled" ? politicalTrades.value : [],
         insiderActivity:
           insiderActivity.status === "fulfilled" ? insiderActivity.value : [],
-
+        optionsFlow:
+          optionsFlow.status === "fulfilled" ? optionsFlow.value : [],
         timestamp: new Date(),
       };
 
@@ -103,18 +106,26 @@ export class DataService {
   }
 
   /**
-   * Get political trades from SEC API
+   * Get political trades from Quiver API
    */
   private async getPoliticalTrades(symbol: string): Promise<PoliticianTrade[]> {
-    const response = await this.secApiClient.getPoliticalTrades(symbol);
+    const response = await this.quiverClient.getPoliticalTrades(symbol);
     return response.data;
   }
 
   /**
-   * Get insider activity from SEC API
+   * Get insider activity from Quiver API
    */
   private async getInsiderActivity(symbol: string): Promise<InsiderActivity[]> {
-    const response = await this.secApiClient.getInsiderActivity(symbol);
+    const response = await this.quiverClient.getInsiderActivity(symbol);
+    return response.data;
+  }
+
+  /**
+   * Get options flow from Quiver API
+   */
+  private async getOptionsFlow(symbol: string): Promise<OptionsFlow[]> {
+    const response = await this.quiverClient.getOptionsFlow(symbol);
     return response.data;
   }
 
@@ -162,7 +173,7 @@ export class DataService {
     const results = await Promise.all([
       cacheService.clearSymbol("polygon", symbol),
       cacheService.clearSymbol("finnhub", symbol),
-      cacheService.clearSymbol("secapi", symbol),
+      cacheService.clearSymbol("quiver", symbol),
     ]);
 
     return results.every((result) => result);
@@ -174,13 +185,13 @@ export class DataService {
   async healthCheck(): Promise<{
     polygon: boolean;
     finnhub: boolean;
-    secApi: boolean;
+    quiver: boolean;
     cache: boolean;
   }> {
     const results = {
       polygon: false,
       finnhub: false,
-      secApi: false,
+      quiver: false,
       cache: false,
     };
 
@@ -201,11 +212,11 @@ export class DataService {
     }
 
     try {
-      // Test SEC API with a simple request
-      await this.secApiClient.getPoliticalTrades("AAPL");
-      results.secApi = true;
+      // Test Quiver API with a simple request
+      await this.quiverClient.getPoliticalTrades("AAPL");
+      results.quiver = true;
     } catch (error) {
-      console.error("SEC API health check failed:", error);
+      console.error("Quiver API health check failed:", error);
     }
 
     try {

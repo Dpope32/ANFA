@@ -5,23 +5,24 @@ import {
   DataSource,
   InsiderActivity,
   PoliticianTrade,
+  OptionsFlow,
 } from "../types";
 import { cacheService } from "./cache";
 
 /**
- * SEC API client for congressional trades and insider activity
- * https://sec-api.io/docs
+ * Quiver Quantitative API client for congressional trades, insider activity, and options flow
+ * https://www.quiverquant.com/
  */
-export class SecApiClient {
+export class QuiverClient {
   private client: AxiosInstance;
   private rateLimitTracker: Map<string, number> = new Map();
 
   constructor() {
     this.client = axios.create({
-      baseURL: apiConfig.secApi.baseUrl,
+      baseURL: apiConfig.quiver.baseUrl,
       timeout: 15000,
       headers: {
-        Authorization: `Bearer ${apiConfig.secApi.apiKey}`,
+        Authorization: `Bearer ${apiConfig.quiver.apiKey}`,
         "Content-Type": "application/json",
       },
     });
@@ -40,7 +41,7 @@ export class SecApiClient {
     symbol: string
   ): Promise<ApiResponse<PoliticianTrade[]>> {
     const cacheKey = cacheService.generateKey(
-      "secapi",
+      "quiver",
       symbol,
       "politicalTrades"
     );
@@ -50,52 +51,40 @@ export class SecApiClient {
     if (cached) {
       return {
         data: cached,
-        source: "secapi",
+        source: "quiver",
         timestamp: new Date(),
         cached: true,
       };
     }
 
     try {
-      // Query congressional trades using SEC API's search endpoint
-      const query = {
-        query: {
-          query_string: {
-            query: `ticker:${symbol.toUpperCase()} AND formType:"STOCK_TRANSACTION"`,
-          },
-        },
-        from: 0,
-        size: 100,
-        sort: [{ filedAt: { order: "desc" } }],
-      };
-
-      const response = await this.client.post("/congressional-trading", query);
+      const response = await this.client.get(`/beta/bulk/congress/${symbol}`);
 
       const trades =
-        response.data?.filings?.map((filing: any) => ({
-          politician: filing.representative || filing.senator || "Unknown",
-          party: filing.party || "Unknown",
-          chamber: filing.chamber || (filing.senator ? "Senate" : "House"),
-          symbol: filing.ticker || symbol.toUpperCase(),
-          tradeType: filing.transactionType?.toUpperCase() as "BUY" | "SELL",
-          amount: this.parseAmount(filing.amount),
-          minAmount: this.parseAmount(filing.amountRangeMin),
-          maxAmount: this.parseAmount(filing.amountRangeMax),
-          date: new Date(filing.transactionDate),
-          reportDate: new Date(filing.filedAt),
+        response.data?.map((trade: any) => ({
+          politician: trade.Representative || "Unknown",
+          party: trade.Party || "Unknown",
+          chamber: trade.House === "House" ? "House" : "Senate",
+          symbol: trade.Ticker || symbol.toUpperCase(),
+          tradeType: trade.Transaction?.toUpperCase() === "PURCHASE" ? "BUY" : "SELL",
+          amount: this.parseAmount(trade.Amount),
+          minAmount: this.parseAmount(trade.AmountMin || trade.Amount),
+          maxAmount: this.parseAmount(trade.AmountMax || trade.Amount),
+          date: new Date(trade.TransactionDate),
+          reportDate: new Date(trade.ReportDate || trade.TransactionDate),
           impact: this.calculateImpact(
-            this.parseAmount(filing.amount),
-            filing.transactionType
+            this.parseAmount(trade.Amount),
+            trade.Transaction
           ),
-          source: "secapi" as DataSource,
+          source: "quiver" as DataSource,
         })) || [];
 
       // Cache the result
-      await cacheService.set(cacheKey, trades, cacheConfig.secApi.ttl);
+      await cacheService.set(cacheKey, trades, cacheConfig.quiver.ttl);
 
       return {
         data: trades,
-        source: "secapi",
+        source: "quiver",
         timestamp: new Date(),
         cached: false,
         rateLimit: this.extractRateLimit(response),
@@ -115,7 +104,7 @@ export class SecApiClient {
     symbol: string
   ): Promise<ApiResponse<InsiderActivity[]>> {
     const cacheKey = cacheService.generateKey(
-      "secapi",
+      "quiver",
       symbol,
       "insiderActivity"
     );
@@ -125,52 +114,35 @@ export class SecApiClient {
     if (cached) {
       return {
         data: cached,
-        source: "secapi",
+        source: "quiver",
         timestamp: new Date(),
         cached: true,
       };
     }
 
     try {
-      // Query Form 4 filings (insider transactions)
-      const query = {
-        query: {
-          bool: {
-            must: [
-              { term: { ticker: symbol.toUpperCase() } },
-              { term: { formType: "4" } },
-            ],
-          },
-        },
-        from: 0,
-        size: 100,
-        sort: [{ filedAt: { order: "desc" } }],
-      };
-
-      const response = await this.client.post("/insider-transactions", query);
+      const response = await this.client.get(`/beta/bulk/insider-trades/${symbol}`);
 
       const activities =
-        response.data?.filings?.map((filing: any) => ({
-          insider: filing.reportingOwnerName || "Unknown",
-          title: filing.reportingOwnerTitle || "Unknown",
-          symbol: filing.ticker || symbol.toUpperCase(),
-          tradeType: filing.transactionCode === "P" ? "BUY" : "SELL",
-          shares: parseInt(filing.sharesTransacted) || 0,
-          price: parseFloat(filing.pricePerShare) || 0,
-          value:
-            (parseInt(filing.sharesTransacted) || 0) *
-            (parseFloat(filing.pricePerShare) || 0),
-          date: new Date(filing.transactionDate),
-          filingDate: new Date(filing.filedAt),
-          source: "secapi" as DataSource,
+        response.data?.map((activity: any) => ({
+          insider: activity.Name || "Unknown",
+          title: activity.Title || "Unknown",
+          symbol: activity.Ticker || symbol.toUpperCase(),
+          tradeType: activity.Transaction?.toUpperCase() === "PURCHASE" || activity.Transaction?.toUpperCase() === "BUY" ? "BUY" : "SELL",
+          shares: parseInt(activity.Shares) || 0,
+          price: parseFloat(activity.Price) || 0,
+          value: (parseInt(activity.Shares) || 0) * (parseFloat(activity.Price) || 0),
+          date: new Date(activity.Date),
+          filingDate: new Date(activity.FilingDate || activity.Date),
+          source: "quiver" as DataSource,
         })) || [];
 
       // Cache the result
-      await cacheService.set(cacheKey, activities, cacheConfig.secApi.ttl);
+      await cacheService.set(cacheKey, activities, cacheConfig.quiver.ttl);
 
       return {
         data: activities,
-        source: "secapi",
+        source: "quiver",
         timestamp: new Date(),
         cached: false,
         rateLimit: this.extractRateLimit(response),
@@ -184,13 +156,63 @@ export class SecApiClient {
   }
 
   /**
+   * Get options flow for a symbol
+   */
+  async getOptionsFlow(symbol: string): Promise<ApiResponse<OptionsFlow[]>> {
+    const cacheKey = cacheService.generateKey("quiver", symbol, "optionsFlow");
+
+    // Try cache first
+    const cached = await cacheService.get<OptionsFlow[]>(cacheKey);
+    if (cached) {
+      return {
+        data: cached,
+        source: "quiver",
+        timestamp: new Date(),
+        cached: true,
+      };
+    }
+
+    try {
+      const response = await this.client.get(`/beta/bulk/flow/${symbol}`);
+
+      const flows =
+        response.data?.map((flow: any) => ({
+          symbol: flow.Ticker || symbol.toUpperCase(),
+          expiration: new Date(flow.Expiration),
+          strike: parseFloat(flow.Strike) || 0,
+          type: flow.Type?.toUpperCase() === "CALL" ? "CALL" : "PUT",
+          premium: parseFloat(flow.Premium) || 0,
+          volume: parseInt(flow.Volume) || 0,
+          openInterest: parseInt(flow.OpenInterest) || 0,
+          sentiment: flow.Sentiment || "NEUTRAL",
+          date: new Date(flow.Date),
+          source: "quiver" as DataSource,
+        })) || [];
+
+      // Cache the result
+      await cacheService.set(cacheKey, flows, cacheConfig.quiver.ttl);
+
+      return {
+        data: flows,
+        source: "quiver",
+        timestamp: new Date(),
+        cached: false,
+        rateLimit: this.extractRateLimit(response),
+      };
+    } catch (error) {
+      throw this.handleError(error, `Failed to fetch options flow for ${symbol}`);
+    }
+  }
+
+  /**
    * Parse amount string to number
    */
-  private parseAmount(amountStr: string): number {
+  private parseAmount(amountStr: string | number): number {
+    if (typeof amountStr === "number") return amountStr;
     if (!amountStr) return 0;
 
     // Remove currency symbols and commas
-    const cleaned = amountStr.replace(/[$,]/g, "");
+    const cleaned = amountStr.toString().replace(/[$,]/g, "");
 
     // Handle ranges like "$1,001 - $15,000"
     if (cleaned.includes("-")) {
@@ -231,16 +253,16 @@ export class SecApiClient {
   }
 
   /**
-   * Enforce rate limiting (SEC API has generous limits)
+   * Enforce rate limiting (Quiver has generous limits)
    */
   private async enforceRateLimit(): Promise<void> {
     const now = Date.now();
     const minute = Math.floor(now / 60000);
-    const key = `secapi_${minute}`;
+    const key = `quiver_${minute}`;
 
     const currentCount = this.rateLimitTracker.get(key) || 0;
 
-    if (currentCount >= apiConfig.secApi.rateLimit) {
+    if (currentCount >= apiConfig.quiver.rateLimit) {
       const waitTime = 60000 - (now % 60000);
       await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
@@ -285,20 +307,20 @@ export class SecApiClient {
 
       switch (status) {
         case 401:
-          throw new Error(`SEC API authentication failed: ${message}`);
+          throw new Error(`Quiver API authentication failed: ${message}`);
         case 403:
-          throw new Error(`SEC API access forbidden: ${message}`);
+          throw new Error(`Quiver API access forbidden: ${message}`);
         case 429:
-          throw new Error(`SEC API rate limit exceeded: ${message}`);
+          throw new Error(`Quiver API rate limit exceeded: ${message}`);
         case 404:
-          throw new Error(`SEC API endpoint not found: ${message}`);
+          throw new Error(`Quiver API endpoint not found: ${message}`);
         default:
-          throw new Error(`SEC API error (${status}): ${message}`);
+          throw new Error(`Quiver API error (${status}): ${message}`);
       }
     } else if (error.request) {
-      throw new Error(`SEC API network error: ${context}`);
+      throw new Error(`Quiver API network error: ${context}`);
     } else {
-      throw new Error(`SEC API error: ${error.message}`);
+      throw new Error(`Quiver API error: ${error.message}`);
     }
   }
 }

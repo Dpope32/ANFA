@@ -22,11 +22,11 @@ export const config = {
     rateLimit: parseInt(process.env.FINNHUB_RATE_LIMIT || "60", 10), // requests per minute
   },
 
-  // SEC API Configuration
-  secApi: {
-    apiKey: process.env.SEC_API_KEY || "",
-    baseUrl: process.env.SEC_API_BASE_URL || "https://api.sec-api.io",
-    rateLimit: parseInt(process.env.SEC_API_RATE_LIMIT || "100", 10), // requests per minute
+  // Quiver API Configuration
+  quiver: {
+    apiKey: process.env.QUIVER_API_KEY || "",
+    baseUrl: process.env.QUIVER_API_BASE_URL || "https://api.quiverquant.com",
+    rateLimit: parseInt(process.env.QUIVER_API_RATE_LIMIT || "1000", 10), // requests per minute
   },
 
   // Redis Cache Configuration
@@ -64,10 +64,10 @@ export const apiConfig: ApiConfig = {
     baseUrl: config.finnhub.baseUrl,
     rateLimit: config.finnhub.rateLimit,
   },
-  secApi: {
-    apiKey: config.secApi.apiKey,
-    baseUrl: config.secApi.baseUrl,
-    rateLimit: config.secApi.rateLimit,
+  quiver: {
+    apiKey: config.quiver.apiKey,
+    baseUrl: config.quiver.baseUrl,
+    rateLimit: config.quiver.rateLimit,
   },
 };
 
@@ -83,9 +83,9 @@ export const cacheConfig: CacheConfig = {
     ttl: parseInt(process.env.FINNHUB_CACHE_TTL || "3600", 10), // 1 hour
     maxSize: parseInt(process.env.FINNHUB_CACHE_MAX_SIZE || "500", 10),
   },
-  secApi: {
-    ttl: parseInt(process.env.SEC_API_CACHE_TTL || "3600", 10), // 1 hour
-    maxSize: parseInt(process.env.SEC_API_CACHE_MAX_SIZE || "500", 10),
+  quiver: {
+    ttl: parseInt(process.env.QUIVER_API_CACHE_TTL || "3600", 10), // 1 hour
+    maxSize: parseInt(process.env.QUIVER_API_CACHE_MAX_SIZE || "500", 10),
   },
 };
 
@@ -93,7 +93,7 @@ export const cacheConfig: CacheConfig = {
  * Validates that required environment variables are set
  */
 export function validateConfig(): void {
-  const requiredVars = ["POLYGON_API_KEY", "FINNHUB_API_KEY", "SEC_API_KEY"];
+  const requiredVars = ["POLYGON_API_KEY", "FINNHUB_API_KEY", "QUIVER_API_KEY"];
 
   const missingVars = requiredVars.filter((varName) => !process.env[varName]);
 
