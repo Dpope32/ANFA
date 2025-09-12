@@ -25,7 +25,7 @@ async function testConnections() {
     console.log('Health Status:');
     console.log(`  Polygon API: ${healthStatus.polygon ? '✅ Connected' : '❌ Failed'}`);
     console.log(`  Finnhub API: ${healthStatus.finnhub ? '✅ Connected' : '❌ Failed'}`);
-    console.log(`  Quiver API: ${healthStatus.quiver ? '✅ Connected' : '❌ Failed'}`);
+    console.log(`  SEC API: ${healthStatus.secApi ? '✅ Connected' : '❌ Failed'}`);
     console.log(`  Redis Cache: ${healthStatus.cache ? '✅ Connected' : '❌ Failed'}\n`);
 
     // Test data fetching for a popular stock
@@ -41,9 +41,8 @@ async function testConnections() {
       console.log(`  Volume Data Points: ${stockData.marketData.volume.length}`);
       console.log(`  P/E Ratio: ${stockData.fundamentals.peRatio}`);
       console.log(`  Market Cap: $${stockData.fundamentals.marketCap.toLocaleString()}`);
-      console.log(`  Political Trades: ${stockData.politicalTrades.length}`);
-      console.log(`  Insider Activities: ${stockData.insiderActivity.length}`);
-      console.log(`  Options Flow: ${stockData.optionsFlow.length}`);
+      console.log(`  Political Trades: ${stockData.politicalTrades?.length ?? 0}`);
+      console.log(`  Insider Activities: ${stockData.insiderActivity?.length ?? 0}`);
       console.log(`  Data Timestamp: ${stockData.timestamp.toISOString()}\n`);
 
       // Test cache statistics
@@ -56,17 +55,19 @@ async function testConnections() {
 
     } catch (error) {
       console.log(`❌ Failed to fetch data for ${testSymbol}:`);
-      console.log(`  Error: ${error.message}\n`);
+      const message = error instanceof Error ? error.message : String(error);
+      console.log(`  Error: ${message}\n`);
     }
 
     console.log('🎉 Connection test completed!');
 
   } catch (error) {
-    console.error('❌ Test failed:', error.message);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('❌ Test failed:', message);
     console.log('\n💡 Make sure you have:');
     console.log('  1. Set up your .env file with API keys');
     console.log('  2. Redis server running (optional)');
-    console.log('  3. Valid API keys for Polygon, Finnhub, and Quiver');
+    console.log('  3. Valid API keys for Polygon, Finnhub, and SEC API');
     process.exit(1);
   }
 }

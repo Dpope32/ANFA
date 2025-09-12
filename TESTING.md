@@ -42,7 +42,7 @@ This tests actual API connections and data fetching.
 - **Cache Service**: Redis operations, key generation, TTL handling
 - **Polygon Client**: Market data fetching, error handling, rate limiting
 - **Finnhub Client**: Fundamental data, company profiles, earnings
-- **Quiver Client**: Political trades, insider activity, options flow
+- **SEC API Client**: Congressional trades, insider activity via Form 4 filings
 - **Data Service**: Data aggregation, fallback mechanisms
 
 ### 🔗 Integration Tests
@@ -68,7 +68,7 @@ Create a `.env` file with your API keys:
 ```env
 POLYGON_API_KEY=your_polygon_api_key
 FINNHUB_API_KEY=your_finnhub_api_key
-QUIVER_API_KEY=your_quiver_api_key
+SEC_API_KEY=your_sec_api_key
 REDIS_URL=redis://localhost:6379
 ```
 
@@ -84,13 +84,13 @@ redis-server
 
 ## 📊 Test Commands
 
-| Command | Purpose | Requirements |
-|---------|---------|--------------|
-| `pnpm run verify` | Basic implementation check | None |
-| `pnpm test` | Unit tests with mocks | None |
-| `pnpm run test:watch` | Unit tests in watch mode | None |
-| `pnpm run test:coverage` | Unit tests with coverage report | None |
-| `pnpm run test:connections` | Live API testing | API keys |
+| Command                     | Purpose                         | Requirements |
+| --------------------------- | ------------------------------- | ------------ |
+| `pnpm run verify`           | Basic implementation check      | None         |
+| `pnpm test`                 | Unit tests with mocks           | None         |
+| `pnpm run test:watch`       | Unit tests in watch mode        | None         |
+| `pnpm run test:coverage`    | Unit tests with coverage report | None         |
+| `pnpm run test:connections` | Live API testing                | API keys     |
 
 ## 🎯 What Each Test Validates
 
@@ -141,26 +141,26 @@ redis-server
 🔍 Verifying Stock Price Predictor Implementation...
 
 1️⃣ Testing service instantiation...
-   ✅ All services instantiated successfully
+✅ All services instantiated successfully
 
 2️⃣ Testing configuration...
-   ✅ Configuration is valid
+✅ Configuration is valid
 
 3️⃣ Testing type definitions...
-   ✅ Type definitions are working correctly
+✅ Type definitions are working correctly
 
 4️⃣ Testing cache functionality...
-   ✅ Cache key generation working correctly
+✅ Cache key generation working correctly
 
 5️⃣ Testing data service methods...
-   ✅ All data service methods are properly defined
+✅ All data service methods are properly defined
 
 6️⃣ Testing error handling...
-   ✅ Error handling is working correctly
+✅ Error handling is working correctly
 
 📊 Verification Summary:
-   Tests Passed: 6/6
-   Success Rate: 100%
+Tests Passed: 6/6
+Success Rate: 100%
 
 🎉 All tests passed! Your implementation is working correctly.
 ``
@@ -175,26 +175,26 @@ redis-server
 
 🏥 Running health check...
 Health Status:
-  Polygon API: ✅ Connected
-  Finnhub API: ✅ Connected
-  Quiver API: ✅ Connected
-  Redis Cache: ✅ Connected
+Polygon API: ✅ Connected
+Finnhub API: ✅ Connected
+SEC API: ✅ Connected
+Redis Cache: ✅ Connected
 
 📊 Testing data fetching for AAPL...
 ✅ Data fetched successfully!
-  Symbol: AAPL
-  Market Data Points: 252
-  Volume Data Points: 252
-  P/E Ratio: 25.5
-  Market Cap: $3,000,000,000,000
-  Political Trades: 3
-  Insider Activities: 5
-  Options Flow: 12
-  Data Timestamp: 2023-12-07T10:30:00.000Z
+Symbol: AAPL
+Market Data Points: 252
+Volume Data Points: 252
+P/E Ratio: 25.5
+Market Cap: $3,000,000,000,000
+Political Trades: 3
+Insider Activities: 5
+Options Flow: 12
+Data Timestamp: 2023-12-07T10:30:00.000Z
 
 💾 Cache Statistics:
-  Connected: true
-  Memory Usage: 1024 bytes
+Connected: true
+Memory Usage: 1024 bytes
 
 🎉 Connection test completed!
 ``

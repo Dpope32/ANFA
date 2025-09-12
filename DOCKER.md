@@ -5,20 +5,22 @@ This document provides instructions for running the Stock Price Predictor using 
 ## Prerequisites
 
 - Docker and Docker Compose installed
-- API keys for Polygon, Finnhub, and Quiver Quantitative
+- API keys for Polygon, Finnhub, and SEC API
 
 ## Environment Setup
 
 1. Copy the environment example file:
+
 ```bash
 cp env.example .env
 ```
 
 2. Edit `.env` and add your API keys:
+
 ```bash
 POLYGON_API_KEY=your_actual_polygon_api_key
 FINNHUB_API_KEY=your_actual_finnhub_api_key
-QUIVER_API_KEY=your_actual_quiver_api_key
+SEC_API_KEY=your_actual_sec_api_key
 ```
 
 ## Development Setup
@@ -34,6 +36,7 @@ docker-compose -f docker-compose.dev.yml up --build
 ```
 
 This will start:
+
 - Redis cache service on port 6379
 - API server on port 3000 with hot reload
 - Volume mounting for live code changes
@@ -51,6 +54,7 @@ docker-compose up --build
 ```
 
 This will start:
+
 - Redis cache service
 - API server
 - Nginx reverse proxy on port 80
@@ -97,6 +101,7 @@ Both the API and Redis services include health checks:
 ## Networking
 
 Services communicate through a dedicated Docker network:
+
 - `stock-predictor-network` (production)
 - `stock-predictor-dev-network` (development)
 

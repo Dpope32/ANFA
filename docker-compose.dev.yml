@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # Redis cache service for development
   redis:
-    image: redis:7-alpine
+    image: redis:alpine
     container_name: stock-predictor-redis-dev
     ports:
       - "6379:6379"
@@ -32,7 +30,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - POLYGON_API_KEY=${POLYGON_API_KEY}
       - FINNHUB_API_KEY=${FINNHUB_API_KEY}
-      - QUIVER_API_KEY=${QUIVER_API_KEY}
+      - SEC_API_KEY=${SEC_API_KEY}
       - LOG_LEVEL=debug
     volumes:
       - .:/app

@@ -24,7 +24,7 @@ The Stock Price Prediction Algorithm is a hybrid quantitative-qualitative model 
 
 1. WHEN fetching price/volume data THEN the system SHALL use Polygon API for real-time and historical market data
 2. WHEN fetching fundamentals THEN the system SHALL use Finnhub API for P/E ratios and financial metrics
-3. WHEN politician trade data exists THEN the system SHALL use Quiver Quantitative for insider trading intelligence
+3. WHEN politician trade data exists THEN the system SHALL use SEC API for congressional trades and insider activity
 4. WHEN sufficient data exists THEN the system SHALL use multivariate models (price + P/E + volume)
 5. WHEN data is insufficient THEN the system SHALL fall back to simpler models
 6. WHEN invalid data is detected THEN the system SHALL filter it out automatically
@@ -44,7 +44,7 @@ The Stock Price Prediction Algorithm is a hybrid quantitative-qualitative model 
 
 #### Acceptance Criteria
 
-1. WHEN a stock symbol is entered THEN the system SHALL automatically fetch price/volume from Polygon, fundamentals from Finnhub, and politician trades from Quiver
+1. WHEN a stock symbol is entered THEN the system SHALL automatically fetch price/volume from Polygon, fundamentals from Finnhub, and congressional trades from SEC API
 2. WHEN any primary data source fails THEN the system SHALL gracefully degrade and continue with available data
 3. WHEN data is unavailable THEN the system SHALL show clear error messages with specific source information
 4. WHEN rate limits are hit THEN the system SHALL implement intelligent backoff and retry strategies

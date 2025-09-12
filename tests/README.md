@@ -43,7 +43,7 @@ pnpm run test:connections
 - **Cache Service**: Tests Redis caching functionality
 - **Polygon Client**: Tests market data API interactions
 - **Finnhub Client**: Tests fundamental data API interactions
-- **Quiver Client**: Tests political/insider data API interactions
+- **SEC API Client**: Tests congressional/insider data API interactions
 
 ### 2. Integration Tests
 
@@ -66,7 +66,7 @@ Create a `.env.test` file with test API keys:
 ```env
 POLYGON_API_KEY=your_test_polygon_key
 FINNHUB_API_KEY=your_test_finnhub_key
-QUIVER_API_KEY=your_test_quiver_key
+SEC_API_KEY=your_test_sec_api_key
 REDIS_URL=redis://localhost:6379
 NODE_ENV=test
 ```
@@ -95,14 +95,14 @@ The test suite covers:
 ### Unit Test Example
 
 ```typescript
-describe('MyService', () => {
+describe("MyService", () => {
   let service: MyService;
-  
+
   beforeEach(() => {
     service = new MyService();
   });
-  
-  it('should do something', async () => {
+
+  it("should do something", async () => {
     const result = await service.doSomething();
     expect(result).toBeDefined();
   });
@@ -112,12 +112,12 @@ describe('MyService', () => {
 ### Integration Test Example
 
 ```typescript
-describe('DataService Integration', () => {
-  it('should aggregate data from all sources', async () => {
+describe("DataService Integration", () => {
+  it("should aggregate data from all sources", async () => {
     const dataService = new DataService();
-    const result = await dataService.getStockData('AAPL');
-    
-    expect(result.symbol).toBe('AAPL');
+    const result = await dataService.getStockData("AAPL");
+
+    expect(result.symbol).toBe("AAPL");
     expect(result.marketData).toBeDefined();
     expect(result.fundamentals).toBeDefined();
   });
@@ -129,14 +129,17 @@ describe('DataService Integration', () => {
 ### Common Issues
 
 1. **Redis Connection Errors**
+
    - Ensure Redis is running: `redis-server`
    - Check Redis URL in environment variables
 
 2. **API Key Errors**
+
    - Verify API keys are valid and have sufficient quota
    - Check rate limits and usage
 
 3. **Test Timeouts**
+
    - Increase timeout in `jest.config.js`
    - Check network connectivity
 

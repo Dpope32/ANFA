@@ -34,6 +34,38 @@ export class SecApiClient {
   }
 
   /**
+   * Post helper with endpoint fallback handling.
+   * Tries the provided endpoint, then retries with `/api` prefix or an alternate
+   * endpoint when a 404 is encountered.
+   */
+  private async postWithFallback<T = any>(
+    endpoint: string,
+    body: any,
+    altEndpoint?: string
+  ): Promise<AxiosResponse<T>> {
+    try {
+      return await this.client.post<T>(endpoint, body);
+    } catch (e: any) {
+      const status = e?.response?.status;
+      // Retry with alternate endpoint when 404
+      if (status === 404) {
+        const fallback =
+          altEndpoint ||
+          (endpoint.startsWith("/api/")
+            ? endpoint.slice(4)
+            : `/api${endpoint}`);
+        try {
+          return await this.client.post<T>(fallback, body);
+        } catch (e2: any) {
+          // Re-throw original if fallback also fails
+          throw e2 || e;
+        }
+      }
+      throw e;
+    }
+  }
+
+  /**
    * Get congressional trades for a symbol
    */
   async getPoliticalTrades(
@@ -69,7 +101,15 @@ export class SecApiClient {
         sort: [{ filedAt: { order: "desc" } }],
       };
 
-      const response = await this.client.post("/congressional-trading", query);
+      // Use SEC API's correct endpoint for insider trading search
+      const response = await this.client.get(`/insider-trading-search`, {
+        params: {
+          query: `ticker:${symbol.toUpperCase()}`,
+          from: 0,
+          size: 100,
+          sort: "filedAt:desc",
+        },
+      });
 
       const trades =
         response.data?.filings?.map((filing: any) => ({
@@ -147,7 +187,15 @@ export class SecApiClient {
         sort: [{ filedAt: { order: "desc" } }],
       };
 
-      const response = await this.client.post("/insider-transactions", query);
+      // Use SEC API's correct endpoint for Form 4 filings
+      const response = await this.client.get(`/insider-trading-search`, {
+        params: {
+          query: `ticker:${symbol.toUpperCase()} AND formType:4`,
+          from: 0,
+          size: 100,
+          sort: "filedAt:desc",
+        },
+      });
 
       const activities =
         response.data?.filings?.map((filing: any) => ({

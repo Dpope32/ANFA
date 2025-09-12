@@ -26,7 +26,7 @@ graph TB
 
     DS --> PG[Polygon API]
     DS --> FH[Finnhub API]
-    DS --> QV[Quiver API]
+    DS --> SA[SEC API]
     DS --> DC[Data Cache]
 
     PE --> PR[Polynomial Regression]
@@ -44,7 +44,7 @@ graph TB
 
 - Microservices approach allows independent scaling and deployment
 - Model Registry enables A/B testing and continuous improvement
-- Best-in-class data sources: Polygon (institutional-grade market data), Finnhub (comprehensive fundamentals), Quiver (unique political trading edge)
+- Best-in-class data sources: Polygon (institutional-grade market data), Finnhub (comprehensive fundamentals), SEC API (congressional trades and insider activity)
 - Separation of concerns between prediction, data, and visualization
 
 ## Components and Interfaces
@@ -57,7 +57,7 @@ graph TB
 
 - **Market Data Fetcher:** Polygon API (institutional-grade real-time and historical prices, volume, OHLC data)
 - **Fundamentals Fetcher:** Finnhub API (P/E ratios, financial metrics, earnings data, analyst estimates)
-- **Political Trading Fetcher:** Quiver Quantitative API (politician trades, insider activity, unusual options flow)
+- **Political Trading Fetcher:** SEC API (congressional trades, insider activity via Form 4 filings)
 - **Data Validator:** Filters invalid/anomalous data points across all sources
 - **Cache Manager:** Redis-based caching with source-specific TTL for performance
 
@@ -74,10 +74,9 @@ interface DataService {
   fetchPERatio(symbol: string): Promise<number>;
   fetchEarningsData(symbol: string): Promise<EarningsData>;
 
-  // Quiver API integration
+  // SEC API integration
   fetchPoliticianTrades(symbol: string): Promise<PoliticianTrade[]>;
   fetchInsiderActivity(symbol: string): Promise<InsiderActivity[]>;
-  fetchUnusualOptionsFlow(symbol: string): Promise<OptionsFlow[]>;
 
   // Data validation and caching
   validateData(data: any[], source: DataSource): any[];
@@ -95,7 +94,7 @@ interface DataService {
 - **Multivariate Model:** Incorporates P/E ratios and volume when available
 - **Neural Network Model:** Advanced model for comparison and potential upgrade
 - **Scenario Generator:** Creates conservative, bullish, bearish predictions
-- **Political Trading Analyzer:** Adjusts predictions based on politician trades and insider activity from Quiver
+- **Political Trading Analyzer:** Adjusts predictions based on politician trades and insider activity from SEC API
 
 **Interface:**
 
@@ -236,7 +235,7 @@ interface AccuracyMetrics {
   confidenceInterval: [number, number];
 }
 
-// Quiver political trading data
+// SEC API political trading data
 interface PoliticianTrade {
   politician: string;
   party: string;
@@ -249,7 +248,7 @@ interface PoliticianTrade {
   date: Date;
   reportDate: Date;
   impact: "HIGH" | "MEDIUM" | "LOW";
-  source: "quiver";
+  source: "secapi";
 }
 
 interface InsiderActivity {
@@ -262,20 +261,7 @@ interface InsiderActivity {
   value: number;
   date: Date;
   filingDate: Date;
-  source: "quiver";
-}
-
-interface OptionsFlow {
-  symbol: string;
-  optionType: "CALL" | "PUT";
-  strike: number;
-  expiration: Date;
-  volume: number;
-  openInterest: number;
-  premium: number;
-  unusualActivity: boolean;
-  date: Date;
-  source: "quiver";
+  source: "secapi";
 }
 ```
 
@@ -292,7 +278,7 @@ interface OptionsFlow {
 
 - **Polygon API Issues:** Implement retry logic with exponential backoff, respect rate limits (5 calls/min free, 1000/min paid)
 - **Finnhub API Issues:** Handle rate limits (60 calls/min free, 600/min paid), implement intelligent caching
-- **Quiver API Issues:** Graceful degradation when political data unavailable, cache recent trades
+- **SEC API Issues:** Graceful degradation when congressional data unavailable, cache recent trades
 - **Invalid Data:** Filter and log anomalies per source, continue with valid subset
 - **Cross-Source Validation:** Verify price data consistency between sources when possible
 - **Network Issues:** Retry logic with circuit breaker pattern per API endpoint

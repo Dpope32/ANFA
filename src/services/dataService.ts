@@ -185,8 +185,8 @@ export class DataService {
     };
 
     try {
-      // Test Polygon with a simple request
-      await this.polygonClient.getCurrentPrice("AAPL");
+      // Test Polygon using aggregates endpoint (available on free plans)
+      await this.getMarketData("AAPL");
       results.polygon = true;
     } catch (error) {
       console.error("Polygon health check failed:", error);
@@ -201,11 +201,16 @@ export class DataService {
     }
 
     try {
-      // Test SEC API with a simple request
-      await this.secApiClient.getPoliticalTrades("AAPL");
+      // Test SEC API with a simple request (try insider first)
+      await this.secApiClient.getInsiderActivity("AAPL");
       results.secApi = true;
-    } catch (error) {
-      console.error("SEC API health check failed:", error);
+    } catch (err1) {
+      try {
+        await this.secApiClient.getPoliticalTrades("AAPL");
+        results.secApi = true;
+      } catch (err2) {
+        console.error("SEC API health check failed:", err2);
+      }
     }
 
     try {

@@ -22,6 +22,7 @@ describe("SecApiClient", () => {
     jest.clearAllMocks();
 
     mockAxiosInstance = {
+      get: jest.fn(),
       post: jest.fn(),
       interceptors: {
         request: {
@@ -56,7 +57,7 @@ describe("SecApiClient", () => {
         headers: {},
       };
 
-      mockAxiosInstance.post.mockResolvedValue(mockResponse);
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
       const result = await secApiClient.getPoliticalTrades("AAPL");
 
@@ -80,7 +81,7 @@ describe("SecApiClient", () => {
         headers: {},
       };
 
-      mockAxiosInstance.post.mockResolvedValue(mockResponse);
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
       const result = await secApiClient.getPoliticalTrades("AAPL");
 
@@ -108,7 +109,7 @@ describe("SecApiClient", () => {
         headers: {},
       };
 
-      mockAxiosInstance.post.mockResolvedValue(mockResponse);
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
       const result = await secApiClient.getPoliticalTrades("AAPL");
 
@@ -126,7 +127,7 @@ describe("SecApiClient", () => {
         },
       };
 
-      mockAxiosInstance.post.mockRejectedValue(error);
+      mockAxiosInstance.get.mockRejectedValue(error);
 
       await expect(secApiClient.getPoliticalTrades("AAPL")).rejects.toThrow(
         "SEC API authentication failed: Invalid API key"
@@ -154,7 +155,7 @@ describe("SecApiClient", () => {
         headers: {},
       };
 
-      mockAxiosInstance.post.mockResolvedValue(mockResponse);
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
       const result = await secApiClient.getInsiderActivity("AAPL");
 
@@ -192,7 +193,7 @@ describe("SecApiClient", () => {
         headers: {},
       };
 
-      mockAxiosInstance.post.mockResolvedValue(mockResponse);
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
       const result = await secApiClient.getInsiderActivity("AAPL");
 
@@ -219,7 +220,7 @@ describe("SecApiClient", () => {
         headers: {},
       };
 
-      mockAxiosInstance.post.mockResolvedValue(mockResponse);
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
       const result = await secApiClient.getInsiderActivity("AAPL");
 
@@ -238,7 +239,7 @@ describe("SecApiClient", () => {
         headers: {},
       };
 
-      mockAxiosInstance.post.mockResolvedValue(mockResponse);
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
       const result = await secApiClient.getInsiderActivity("AAPL");
 
@@ -261,7 +262,7 @@ describe("SecApiClient", () => {
         },
       };
 
-      mockAxiosInstance.post.mockRejectedValue(error);
+      mockAxiosInstance.get.mockRejectedValue(error);
 
       await expect(secApiClient.getPoliticalTrades("AAPL")).rejects.toThrow(
         "SEC API access forbidden: Access forbidden"
@@ -276,7 +277,7 @@ describe("SecApiClient", () => {
         },
       };
 
-      mockAxiosInstance.post.mockRejectedValue(error);
+      mockAxiosInstance.get.mockRejectedValue(error);
 
       await expect(secApiClient.getInsiderActivity("AAPL")).rejects.toThrow(
         "SEC API rate limit exceeded: Rate limit exceeded"
@@ -289,7 +290,7 @@ describe("SecApiClient", () => {
         message: "Network Error",
       };
 
-      mockAxiosInstance.post.mockRejectedValue(error);
+      mockAxiosInstance.get.mockRejectedValue(error);
 
       await expect(secApiClient.getPoliticalTrades("AAPL")).rejects.toThrow(
         "SEC API network error: Failed to fetch congressional trades for AAPL"
@@ -304,7 +305,7 @@ describe("SecApiClient", () => {
         },
       };
 
-      mockAxiosInstance.post.mockRejectedValue(error);
+      mockAxiosInstance.get.mockRejectedValue(error);
 
       await expect(secApiClient.getInsiderActivity("AAPL")).rejects.toThrow(
         "SEC API endpoint not found: Endpoint not found"
@@ -330,7 +331,7 @@ describe("SecApiClient", () => {
         headers: {},
       };
 
-      mockAxiosInstance.post.mockResolvedValue(mockResponse);
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
       const result = await secApiClient.getPoliticalTrades("AAPL");
 
@@ -355,7 +356,7 @@ describe("SecApiClient", () => {
         headers: {},
       };
 
-      mockAxiosInstance.post.mockResolvedValue(mockResponse);
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
       const result = await secApiClient.getPoliticalTrades("AAPL");
 

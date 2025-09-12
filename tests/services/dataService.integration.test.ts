@@ -230,14 +230,12 @@ describe("DataService Integration Tests", () => {
 
   describe("healthCheck", () => {
     it("should return health status for all services", async () => {
-      // Mock successful health checks
-      mockPolygonClient.getCurrentPrice.mockResolvedValue({
+      // Mock successful health checks - use getMarketData for polygon since that's what healthCheck calls
+      mockPolygonClient.getMarketData.mockResolvedValue({
         data: {
           symbol: "AAPL",
-          price: 150,
-          change: 0,
-          changePercent: 0,
-          volume: 0,
+          prices: [],
+          volume: [],
           timestamp: new Date(),
           source: "polygon",
         },
@@ -263,7 +261,7 @@ describe("DataService Integration Tests", () => {
         cached: false,
       });
 
-      mockSecApiClient.getPoliticalTrades.mockResolvedValue({
+      mockSecApiClient.getInsiderActivity.mockResolvedValue({
         data: [],
         source: "secapi",
         timestamp: new Date(),
@@ -282,13 +280,13 @@ describe("DataService Integration Tests", () => {
 
     it("should handle service failures in health check", async () => {
       // Mock failed health checks
-      mockPolygonClient.getCurrentPrice.mockRejectedValue(
+      mockPolygonClient.getMarketData.mockRejectedValue(
         new Error("Polygon Error")
       );
       mockFinnhubClient.getFundamentals.mockRejectedValue(
         new Error("Finnhub Error")
       );
-      mockSecApiClient.getPoliticalTrades.mockRejectedValue(
+      mockSecApiClient.getInsiderActivity.mockRejectedValue(
         new Error("SEC API Error")
       );
 

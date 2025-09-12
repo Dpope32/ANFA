@@ -11,7 +11,7 @@
 
   - Create PolygonClient class for market data (prices, volume, OHLC, VWAP)
   - Create FinnhubClient class for fundamentals (P/E, earnings, financial metrics)
-  - Create QuiverClient class for political trades and insider activity
+  - Create SecApiClient class for congressional trades and insider activity
   - Add data validation and error handling per source
   - Implement Redis caching with source-specific TTL
   - _Requirements: 4.1, 4.2, 4.4, 2.1, 2.2, 2.3_
@@ -32,9 +32,8 @@
 
 - [ ] 5. Add political trading and insider activity integration
 
-  - Integrate Quiver political trades with party/chamber analysis
-  - Add insider activity tracking with filing date analysis
-  - Implement unusual options flow detection
+  - Integrate SEC API congressional trades with party/chamber analysis
+  - Add insider activity tracking with Form 4 filing analysis
   - Create sophisticated impact scoring based on trade size and timing
   - Adjust prediction scenarios based on political and insider signals
   - _Requirements: 3.1, 3.2_

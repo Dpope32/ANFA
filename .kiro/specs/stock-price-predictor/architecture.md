@@ -24,9 +24,9 @@ pe_ratios = finnhub_data['pe_ratio']
 forward_pe = finnhub_data['forward_pe']
 valid_mask = ~np.isnan(pe_ratios) & (pe_ratios > 0)
 
-# Quiver political data preprocessing
-quiver_trades = filter_recent_political_trades(raw_political_data, days=90)
-political_sentiment = calculate_political_sentiment(quiver_trades)
+# SEC API congressional data preprocessing
+sec_trades = filter_recent_congressional_trades(raw_political_data, days=90)
+political_sentiment = calculate_political_sentiment(sec_trades)
 ```
 
 ### 2. Model Selection Logic
@@ -71,8 +71,8 @@ else:
 X_future = [future_t³, future_t², future_t, 1, forward_pe_finnhub]
 predicted_price = model.predict(X_future)
 
-# Apply Quiver political trading adjustments
-political_adjustment = calculate_political_impact(quiver_trades, symbol)
+# Apply SEC API congressional trading adjustments
+political_adjustment = calculate_political_impact(sec_trades, symbol)
 volume_adjustment = calculate_volume_anomaly(polygon_volume_data)
 
 # Apply combined qualitative adjustments
@@ -158,15 +158,15 @@ class StockPredictor:
     def evaluate_model(self) -> dict
 
 class MultiSourceDataManager:
-    def __init__(self, polygon_client, finnhub_client, quiver_client)
+    def __init__(self, polygon_client, finnhub_client, sec_api_client)
     def fetch_all_data(self, symbol: str) -> CombinedStockData
     def validate_cross_source_consistency(self, data: dict) -> bool
     def cache_data(self, symbol: str, data: dict, ttl: int)
 
 class PoliticalTradingAnalyzer:
-    def analyze_politician_trades(self, quiver_trades: list) -> dict
+    def analyze_politician_trades(self, sec_trades: list) -> dict
     def calculate_political_sentiment(self, trades: list) -> float
-    def detect_unusual_activity(self, trades: list, options_flow: list) -> bool
+    def detect_unusual_activity(self, trades: list, insider_activity: list) -> bool
     def apply_political_adjustments(self, base_prediction: float) -> float
 
 class QualitativeAdjuster:
@@ -182,7 +182,7 @@ class QualitativeAdjuster:
 
    - Polygon: Historical prices, volume, VWAP, real-time data
    - Finnhub: P/E ratios, forward P/E, earnings, financial metrics
-   - Quiver: Political trades, insider activity, unusual options flow
+   - SEC API: Congressional trades, insider activity via Form 4 filings
 
 2. **Cross-Source Data Validation:**
 
@@ -199,8 +199,8 @@ class QualitativeAdjuster:
 4. **Multi-Factor Prediction:**
 
    - Generate base prediction using fitted model
-   - Apply Quiver political trading intelligence
-   - Factor in unusual options activity and insider trades
+   - Apply SEC API congressional trading intelligence
+   - Factor in insider activity from Form 4 filings
 
 5. **Comprehensive Adjustment:**
 
@@ -211,6 +211,6 @@ class QualitativeAdjuster:
 6. **Enhanced Output:**
    - Return three scenarios with confidence metrics
    - Include data source attribution and freshness
-   - Provide political trading context and insider activity summary
+   - Provide congressional trading context and insider activity summary
 
 This architecture provides a systematic, testable approach to stock price prediction that balances quantitative rigor with qualitative market insights.
