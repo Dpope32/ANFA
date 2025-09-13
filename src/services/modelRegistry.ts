@@ -470,6 +470,31 @@ export class ModelRegistry {
   }
 
   /**
+   * Clear all registry data (for testing purposes)
+   */
+  clearRegistry(): void {
+    this.models.clear();
+    this.predictionOutcomes = [];
+    this.performanceHistory = [];
+    
+    // Reinitialize with default model
+    this.registerModel({
+      id: "polynomial-v1.0.0",
+      version: "1.0.0",
+      modelType: "Polynomial Regression",
+      accuracy: {
+        rSquared: 0.75,
+        rmse: 0.05,
+        mape: 8.5,
+        confidenceInterval: [0.02, 0.08],
+      },
+      createdAt: new Date(),
+      isActive: true,
+      trainingDataSize: 1000,
+    });
+  }
+
+  /**
    * Get model registry statistics
    */
   getRegistryStats(): {

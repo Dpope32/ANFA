@@ -295,9 +295,9 @@ export class ContinuousLearningService {
       return activeModel?.id || "polynomial-v1.0.0";
     }
 
-    // A/B test traffic splitting
+    // A/B test traffic splitting - use the current test's configuration
     const random = Math.random() * 100;
-    if (random < this.abTestConfig.trafficSplit) {
+    if (random < this.currentABTest.config.trafficSplit) {
       return this.currentABTest.treatmentModelId;
     } else {
       return this.currentABTest.controlModelId;

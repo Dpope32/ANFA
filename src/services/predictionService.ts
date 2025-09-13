@@ -8,6 +8,8 @@ import {
 } from "../types";
 import { getErrorMessage } from "../utils/errors";
 import { politicalTradingAnalyzer } from "./politicalTradingAnalyzer";
+import { continuousLearningService } from "./continuousLearning";
+import { modelRegistry } from "./modelRegistry";
 
 /**
  * Prediction service that orchestrates the prediction engine
