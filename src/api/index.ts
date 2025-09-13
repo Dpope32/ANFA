@@ -4,6 +4,11 @@ import express, { NextFunction, Request, Response } from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { config } from "../config";
+import {
+  ChartGenerator,
+  MetricsDisplay,
+  VisualizationService,
+} from "../services";
 import { ChartService } from "../services/chartService";
 import { DataService } from "../services/dataService";
 import { PredictionService } from "../services/predictionService";
@@ -17,12 +22,18 @@ export class ApiServer {
   private predictionService: PredictionService;
   private dataService: DataService;
   private chartService: ChartService;
+  private chartGenerator: ChartGenerator;
+  private metricsDisplay: MetricsDisplay;
+  private visualizationService: VisualizationService;
 
   constructor() {
     this.app = express();
     this.predictionService = new PredictionService();
     this.dataService = new DataService();
     this.chartService = new ChartService();
+    this.chartGenerator = new ChartGenerator();
+    this.metricsDisplay = new MetricsDisplay();
+    this.visualizationService = new VisualizationService();
 
     this.setupMiddleware();
     this.setupRoutes();
@@ -93,17 +104,43 @@ export class ApiServer {
             timeframe
           );
 
-          // Generate chart data
+          // Generate comprehensive visualization data
           const chartData = await this.chartService.generateChartData(
             stockData,
             prediction
           );
+
+          // Generate enhanced chart data
+          const enhancedChartData =
+            await this.chartGenerator.generatePredictionChart(
+              stockData,
+              prediction
+            );
+
+          // Generate accuracy metrics display
+          const metricsDisplay =
+            this.metricsDisplay.generateMetricsDisplay(prediction);
+
+          // Generate scenario comparison
+          const scenarioComparison =
+            this.chartGenerator.generateScenarioComparisonChart(prediction);
+
+          // Generate complete visualization
+          const visualization =
+            await this.visualizationService.generateVisualization(
+              stockData,
+              prediction
+            );
 
           res.json({
             success: true,
             data: {
               prediction,
               chartData,
+              enhancedChartData,
+              metricsDisplay,
+              scenarioComparison,
+              visualization,
               metadata: {
                 symbol,
                 timeframe,
@@ -159,6 +196,120 @@ export class ApiServer {
             success: true,
             data: {
               chartData,
+              metadata: {
+                generatedAt: new Date().toISOString(),
+              },
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Get enhanced chart data with all visualization components
+    this.app.post(
+      "/api/chart/enhanced",
+      this.validateChartRequest,
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { stockData, prediction } = req.body;
+
+          // Generate enhanced chart data
+          const enhancedChartData =
+            await this.chartGenerator.generatePredictionChart(
+              stockData,
+              prediction
+            );
+
+          res.json({
+            success: true,
+            data: {
+              enhancedChartData,
+              metadata: {
+                generatedAt: new Date().toISOString(),
+              },
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Get accuracy metrics display
+    this.app.post(
+      "/api/metrics",
+      this.validateMetricsRequest,
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { prediction } = req.body;
+
+          const metricsDisplay =
+            this.metricsDisplay.generateMetricsDisplay(prediction);
+          const accuracyChart =
+            this.chartGenerator.generateAccuracyChart(prediction);
+
+          res.json({
+            success: true,
+            data: {
+              metricsDisplay,
+              accuracyChart,
+              metadata: {
+                generatedAt: new Date().toISOString(),
+              },
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Get scenario comparison visualization
+    this.app.post(
+      "/api/scenarios",
+      this.validateMetricsRequest,
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { prediction } = req.body;
+
+          const scenarioComparison =
+            this.chartGenerator.generateScenarioComparisonChart(prediction);
+
+          res.json({
+            success: true,
+            data: {
+              scenarioComparison,
+              metadata: {
+                generatedAt: new Date().toISOString(),
+              },
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Get complete visualization data
+    this.app.post(
+      "/api/visualization",
+      this.validateChartRequest,
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { stockData, prediction } = req.body;
+
+          const visualization =
+            await this.visualizationService.generateVisualization(
+              stockData,
+              prediction
+            );
+
+          res.json({
+            success: true,
+            data: {
+              visualization,
               metadata: {
                 generatedAt: new Date().toISOString(),
               },
@@ -334,6 +485,48 @@ export class ApiServer {
         error: {
           code: "MISSING_DATA",
           message: "Both stockData and prediction are required",
+        },
+      });
+      return;
+    }
+
+    next();
+  };
+
+  /**
+   * Validate metrics request
+   */
+  private validateMetricsRequest = (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): void => {
+    const { prediction } = req.body;
+
+    if (!prediction) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "MISSING_PREDICTION",
+          message: "Prediction data is required",
+        },
+      });
+      return;
+    }
+
+    // Validate prediction structure
+    if (
+      !prediction.accuracy ||
+      !prediction.conservative ||
+      !prediction.bullish ||
+      !prediction.bearish
+    ) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "INVALID_PREDICTION",
+          message:
+            "Prediction must include accuracy metrics and all three scenarios",
         },
       });
       return;

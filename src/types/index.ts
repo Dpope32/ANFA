@@ -156,9 +156,9 @@ export interface RealTimePrice {
 export interface ChartData {
   historical: PricePoint[];
   predictions: {
-    conservative: number[];
-    bullish: number[];
-    bearish: number[];
+    conservative: (number | null)[];
+    bullish: (number | null)[];
+    bearish: (number | null)[];
   };
   dates: Date[];
   politicalEvents?: PoliticalEvent[];

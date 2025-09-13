@@ -89,18 +89,18 @@ export class SecApiClient {
         query: {
           query_string: {
             query: `ticker:"${symbol}" AND formType:"4" AND transactionCode:["P","S"]`,
-            default_field: "*"
-          }
+            default_field: "*",
+          },
         },
         from: 0,
         size: 100,
         sort: [
           {
-            "filingDate": {
-              "order": "desc"
-            }
-          }
-        ]
+            filingDate: {
+              order: "desc",
+            },
+          },
+        ],
       };
 
       const response = await this.postWithFallback(
@@ -170,18 +170,18 @@ export class SecApiClient {
         query: {
           query_string: {
             query: `ticker:"${symbol}" AND formType:"4" AND transactionCode:["P","S","A","D","F","G","H","I","J","K","L","M","N","O","Q","R","T","U","V","W","X","Y","Z"]`,
-            default_field: "*"
-          }
+            default_field: "*",
+          },
         },
         from: 0,
         size: 100,
         sort: [
           {
-            "filingDate": {
-              "order": "desc"
-            }
-          }
-        ]
+            filingDate: {
+              order: "desc",
+            },
+          },
+        ],
       };
 
       const response = await this.postWithFallback(
@@ -225,7 +225,10 @@ export class SecApiClient {
   /**
    * Parse congressional trades from SEC API response
    */
-  private parseCongressionalTrades(apiResponse: any, symbol: string): PoliticianTrade[] {
+  private parseCongressionalTrades(
+    apiResponse: any,
+    symbol: string
+  ): PoliticianTrade[] {
     const trades: PoliticianTrade[] = [];
 
     if (!apiResponse?.filings || !Array.isArray(apiResponse.filings)) {
@@ -240,7 +243,7 @@ export class SecApiClient {
 
         // Parse transaction details
         const transactions = this.parseTransactions(filing);
-        
+
         for (const transaction of transactions) {
           const trade: PoliticianTrade = {
             politician: politician.name,
@@ -270,7 +273,10 @@ export class SecApiClient {
   /**
    * Parse insider activity from SEC API response
    */
-  private parseInsiderActivity(apiResponse: any, symbol: string): InsiderActivity[] {
+  private parseInsiderActivity(
+    apiResponse: any,
+    symbol: string
+  ): InsiderActivity[] {
     const activities: InsiderActivity[] = [];
 
     if (!apiResponse?.filings || !Array.isArray(apiResponse.filings)) {
@@ -285,7 +291,7 @@ export class SecApiClient {
 
         // Parse transaction details
         const transactions = this.parseTransactions(filing);
-        
+
         for (const transaction of transactions) {
           const activity: InsiderActivity = {
             insider: insider.name,
@@ -313,32 +319,36 @@ export class SecApiClient {
   /**
    * Extract politician information from filing
    */
-  private extractPoliticianInfo(filing: any): { name: string; party: string; chamber: "House" | "Senate" } | null {
+  private extractPoliticianInfo(
+    _filing: any
+  ): { name: string; party: string; chamber: "House" | "Senate" } | null {
     // This would need to be implemented based on actual SEC API response structure
     // For now, return mock data
     return {
       name: "Congressional Member",
       party: "Unknown",
-      chamber: "House"
+      chamber: "House",
     };
   }
 
   /**
    * Extract insider information from filing
    */
-  private extractInsiderInfo(filing: any): { name: string; title: string } | null {
+  private extractInsiderInfo(
+    _filing: any
+  ): { name: string; title: string } | null {
     // This would need to be implemented based on actual SEC API response structure
     // For now, return mock data
     return {
       name: "Corporate Insider",
-      title: "Executive"
+      title: "Executive",
     };
   }
 
   /**
    * Parse transactions from filing
    */
-  private parseTransactions(filing: any): Array<{
+  private parseTransactions(_filing: any): Array<{
     type: "BUY" | "SELL";
     amount: number;
     minAmount: number;
@@ -350,16 +360,18 @@ export class SecApiClient {
   }> {
     // This would need to be implemented based on actual SEC API response structure
     // For now, return mock data
-    return [{
-      type: "BUY",
-      amount: 50000,
-      minAmount: 10001,
-      maxAmount: 50000,
-      shares: 1000,
-      price: 50.00,
-      value: 50000,
-      date: new Date().toISOString()
-    }];
+    return [
+      {
+        type: "BUY",
+        amount: 50000,
+        minAmount: 10001,
+        maxAmount: 50000,
+        shares: 1000,
+        price: 50.0,
+        value: 50000,
+        date: new Date().toISOString(),
+      },
+    ];
   }
 
   /**
@@ -369,9 +381,21 @@ export class SecApiClient {
     const mockTrades: PoliticianTrade[] = [];
     const politicians = [
       { name: "Nancy Pelosi", party: "Democratic", chamber: "House" as const },
-      { name: "Mitch McConnell", party: "Republican", chamber: "Senate" as const },
-      { name: "Chuck Schumer", party: "Democratic", chamber: "Senate" as const },
-      { name: "Kevin McCarthy", party: "Republican", chamber: "House" as const },
+      {
+        name: "Mitch McConnell",
+        party: "Republican",
+        chamber: "Senate" as const,
+      },
+      {
+        name: "Chuck Schumer",
+        party: "Democratic",
+        chamber: "Senate" as const,
+      },
+      {
+        name: "Kevin McCarthy",
+        party: "Republican",
+        chamber: "House" as const,
+      },
     ];
 
     const tradeTypes: ("BUY" | "SELL")[] = ["BUY", "SELL"];
@@ -379,21 +403,25 @@ export class SecApiClient {
 
     // Generate 2-4 mock trades
     const numTrades = Math.floor(Math.random() * 3) + 2;
-    
+
     for (let i = 0; i < numTrades; i++) {
-      const politician = politicians[Math.floor(Math.random() * politicians.length)]!;
-      const tradeType = tradeTypes[Math.floor(Math.random() * tradeTypes.length)]!;
+      const politician =
+        politicians[Math.floor(Math.random() * politicians.length)]!;
+      const tradeType =
+        tradeTypes[Math.floor(Math.random() * tradeTypes.length)]!;
       const amount = amounts[Math.floor(Math.random() * amounts.length)]!;
       const minAmount = Math.floor(amount * 0.8);
       const maxAmount = Math.floor(amount * 1.2);
-      
+
       // Generate date within last 90 days
       const daysAgo = Math.floor(Math.random() * 90);
       const tradeDate = new Date();
       tradeDate.setDate(tradeDate.getDate() - daysAgo);
-      
+
       const reportDate = new Date(tradeDate);
-      reportDate.setDate(reportDate.getDate() + Math.floor(Math.random() * 30) + 1);
+      reportDate.setDate(
+        reportDate.getDate() + Math.floor(Math.random() * 30) + 1
+      );
 
       mockTrades.push({
         politician: politician.name,
@@ -432,21 +460,25 @@ export class SecApiClient {
 
     // Generate 1-3 mock activities
     const numActivities = Math.floor(Math.random() * 3) + 1;
-    
+
     for (let i = 0; i < numActivities; i++) {
       const insider = insiders[Math.floor(Math.random() * insiders.length)]!;
-      const tradeType = tradeTypes[Math.floor(Math.random() * tradeTypes.length)]!;
-      const shares = shareCounts[Math.floor(Math.random() * shareCounts.length)]!;
+      const tradeType =
+        tradeTypes[Math.floor(Math.random() * tradeTypes.length)]!;
+      const shares =
+        shareCounts[Math.floor(Math.random() * shareCounts.length)]!;
       const price = prices[Math.floor(Math.random() * prices.length)]!;
       const value = shares * price;
-      
+
       // Generate date within last 60 days
       const daysAgo = Math.floor(Math.random() * 60);
       const tradeDate = new Date();
       tradeDate.setDate(tradeDate.getDate() - daysAgo);
-      
+
       const filingDate = new Date(tradeDate);
-      filingDate.setDate(filingDate.getDate() + Math.floor(Math.random() * 2) + 1);
+      filingDate.setDate(
+        filingDate.getDate() + Math.floor(Math.random() * 2) + 1
+      );
 
       mockActivities.push({
         insider: insider.name,
