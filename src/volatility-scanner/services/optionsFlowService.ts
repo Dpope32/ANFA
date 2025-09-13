@@ -41,7 +41,7 @@ export class OptionsFlowService {
         const optionsChain = await this.polygonOptions.getOptionsChain(symbol);
         
         // Get current price data
-        const priceData = await this.polygonClient.getLatestPrice(symbol);
+        const priceData = await this.polygonClient.getCurrentPrice(symbol);
         
         // Analyze the flow
         const flowData = await this.analyzeOptionsFlow(symbol, optionsChain, priceData);
@@ -72,7 +72,7 @@ export class OptionsFlowService {
     priceData: any
   ): Promise<OptionsFlowData> {
     const timestamp = new Date();
-    const underlyingPrice = priceData?.price || 100;
+    const underlyingPrice = priceData?.data?.price || 100;
     
     // Calculate real metrics from Polygon data
     let totalCallVolume = 0;
@@ -149,7 +149,7 @@ export class OptionsFlowService {
     const cacheKey = `historical:${symbol}`;
     const cached = await this.cache.get(cacheKey);
     
-    if (cached) {
+    if (cached && typeof cached === 'string') {
       return JSON.parse(cached);
     }
     
@@ -160,12 +160,12 @@ export class OptionsFlowService {
     
     const historicalData = await this.polygonClient.getHistoricalPrices(
       symbol,
-      startDate.toISOString().split('T')[0],
-      endDate.toISOString().split('T')[0]
+      startDate,
+      endDate
     );
     
-    const avgVolume = historicalData.reduce((sum: number, day: any) => 
-      sum + (day.volume || 0), 0) / (historicalData.length || 1);
+    const avgVolume = historicalData?.data?.reduce((sum: number, day: any) => 
+      sum + (day.volume || 0), 0) / (historicalData?.data?.length || 1) || 0;
     
     const result = { avgVolume };
     await this.cache.set(cacheKey, JSON.stringify(result), 3600); // Cache for 1 hour
@@ -386,7 +386,7 @@ export class OptionsFlowService {
       
       const recent = history.slice(-10);
       const avgPutCall = recent.reduce((sum, d) => sum + d.putCallRatio, 0) / recent.length;
-      const currentPutCall = recent[recent.length - 1].putCallRatio;
+      const currentPutCall = recent[recent.length - 1]?.putCallRatio || 0;
       
       const deviation = Math.abs(currentPutCall - avgPutCall) / avgPutCall;
       

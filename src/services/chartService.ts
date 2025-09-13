@@ -222,6 +222,6 @@ export class ChartService {
    */
   private parseTimeframe(timeframe: string): number {
     const match = timeframe.match(/(\d+)d/);
-    return match ? parseInt(match[1], 10) : 30;
+    return match && match[1] ? parseInt(match[1], 10) : 30;
   }
 }

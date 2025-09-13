@@ -24,7 +24,7 @@ export class PolygonOptionsService {
     const cacheKey = `polygon:options:${symbol}:${expiration || 'all'}`;
     const cached = await this.cache.get(cacheKey);
     
-    if (cached) {
+    if (cached && typeof cached === 'string') {
       return JSON.parse(cached);
     }
 
