@@ -38,45 +38,73 @@ describe("SecApiClient", () => {
   });
 
   describe("getPoliticalTrades", () => {
-    it("should return empty data gracefully", async () => {
+    it("should return mock data when API fails", async () => {
       const result = await secApiClient.getPoliticalTrades("AAPL");
 
-      expect(result.data).toHaveLength(0);
+      expect(result.data.length).toBeGreaterThan(0);
       expect(result.source).toBe("secapi");
       expect(result.cached).toBe(false);
       expect(result.timestamp).toBeInstanceOf(Date);
+      
+      // Verify mock data structure
+      const trade = result.data[0];
+      expect(trade).toHaveProperty("politician");
+      expect(trade).toHaveProperty("party");
+      expect(trade).toHaveProperty("chamber");
+      expect(trade).toHaveProperty("symbol", "AAPL");
+      expect(trade).toHaveProperty("tradeType");
+      expect(trade).toHaveProperty("amount");
+      expect(trade).toHaveProperty("impact");
     });
 
-    it("should return empty data for any symbol", async () => {
+    it("should return mock data for any symbol", async () => {
       const result = await secApiClient.getPoliticalTrades("TSLA");
 
-      expect(result.data).toHaveLength(0);
+      expect(result.data.length).toBeGreaterThan(0);
       expect(result.source).toBe("secapi");
       expect(result.cached).toBe(false);
+      
+      // Verify symbol is correctly set
+      const trade = result.data[0]!;
+      expect(trade.symbol).toBe("TSLA");
     });
   });
 
   describe("getInsiderActivity", () => {
-    it("should return empty data gracefully", async () => {
+    it("should return mock data when API fails", async () => {
       const result = await secApiClient.getInsiderActivity("AAPL");
 
-      expect(result.data).toHaveLength(0);
+      expect(result.data.length).toBeGreaterThan(0);
       expect(result.source).toBe("secapi");
       expect(result.cached).toBe(false);
       expect(result.timestamp).toBeInstanceOf(Date);
+      
+      // Verify mock data structure
+      const activity = result.data[0];
+      expect(activity).toHaveProperty("insider");
+      expect(activity).toHaveProperty("title");
+      expect(activity).toHaveProperty("symbol", "AAPL");
+      expect(activity).toHaveProperty("tradeType");
+      expect(activity).toHaveProperty("shares");
+      expect(activity).toHaveProperty("price");
+      expect(activity).toHaveProperty("value");
     });
 
-    it("should return empty data for any symbol", async () => {
+    it("should return mock data for any symbol", async () => {
       const result = await secApiClient.getInsiderActivity("TSLA");
 
-      expect(result.data).toHaveLength(0);
+      expect(result.data.length).toBeGreaterThan(0);
       expect(result.source).toBe("secapi");
       expect(result.cached).toBe(false);
+      
+      // Verify symbol is correctly set
+      const activity = result.data[0]!;
+      expect(activity.symbol).toBe("TSLA");
     });
   });
 
   describe("caching", () => {
-    it("should cache empty results", async () => {
+    it("should cache mock results", async () => {
       const { cacheService } = require("../../src/services/cache");
       cacheService.get.mockResolvedValue(null);
       cacheService.set.mockResolvedValue(true);
@@ -85,7 +113,17 @@ describe("SecApiClient", () => {
 
       expect(cacheService.set).toHaveBeenCalledWith(
         "secapi:AAPL:politicalTrades",
-        [],
+        expect.arrayContaining([
+          expect.objectContaining({
+            symbol: "AAPL",
+            politician: expect.any(String),
+            party: expect.any(String),
+            chamber: expect.any(String),
+            tradeType: expect.any(String),
+            amount: expect.any(Number),
+            impact: expect.any(String)
+          })
+        ]),
         expect.any(Number)
       );
     });

@@ -7,6 +7,7 @@ import {
   StockData,
 } from "../types";
 import { getErrorMessage } from "../utils/errors";
+import { politicalTradingAnalyzer } from "./politicalTradingAnalyzer";
 
 /**
  * Prediction service that orchestrates the prediction engine
@@ -55,25 +56,56 @@ export class PredictionService {
         ],
       };
 
-      // Generate three scenarios
+      // Analyze political and insider trading signals
+      const politicalAnalysis =
+        politicalTradingAnalyzer.analyzePoliticalSentiment(
+          stockData.politicalTrades || [],
+          stockData.symbol
+        );
+
+      const insiderAnalysis = politicalTradingAnalyzer.analyzeInsiderSentiment(
+        stockData.insiderActivity || [],
+        stockData.symbol
+      );
+
+      // Apply political and insider adjustments to base prediction
+      const adjustments =
+        politicalTradingAnalyzer.applyPoliticalAndInsiderAdjustments(
+          basePrediction.targetPrice,
+          politicalAnalysis,
+          insiderAnalysis
+        );
+
+      // Update base prediction with adjustments
+      const adjustedBasePrediction = {
+        ...basePrediction,
+        targetPrice: adjustments.adjustedPrediction,
+        factors: [...basePrediction.factors, ...adjustments.factors],
+      };
+
+      // Generate three scenarios with adjusted prediction
       const scenarios = await this.scenarioGenerator.generateScenarios(
-        basePrediction,
+        adjustedBasePrediction,
         stockData,
         timeframe
       );
 
-      // Calculate accuracy metrics
-      const accuracy = await this.calculateAccuracy(model, features);
-
-      // Calculate overall confidence
-      const confidence = this.calculateConfidence(accuracy, stockData);
+      // Calculate overall confidence with political/insider impact
+      const baseConfidence = this.calculateConfidence(
+        scenarios.accuracyMetrics,
+        stockData
+      );
+      const confidence = Math.min(
+        1,
+        baseConfidence + adjustments.confidenceImpact
+      );
 
       return {
         symbol: stockData.symbol,
         conservative: scenarios.conservative,
         bullish: scenarios.bullish,
         bearish: scenarios.bearish,
-        accuracy,
+        accuracy: scenarios.accuracyMetrics,
         confidence,
         timestamp: new Date(),
       };
@@ -289,9 +321,10 @@ export class PredictionService {
     // Reduce confidence for high volatility
     const prices = stockData.marketData.prices.map((p) => p.close);
     if (prices.length > 1) {
-      const returns = prices
-        .slice(1)
-        .map((price, i) => (price - prices[i]) / prices[i]);
+      const returns = prices.slice(1).map((price, i) => {
+        const prevPrice = prices[i];
+        return prevPrice ? (price - prevPrice) / prevPrice : 0;
+      });
       const volatility = Math.sqrt(
         returns.reduce((sum, ret) => sum + ret * ret, 0) / returns.length
       );

@@ -73,13 +73,21 @@ export interface PredictionScenario {
 }
 
 /**
+ * Enhanced prediction scenario with confidence intervals
+ */
+export interface EnhancedPredictionScenario extends PredictionScenario {
+  confidenceInterval: [number, number];
+  standardError: number;
+}
+
+/**
  * Complete prediction result with all three scenarios
  */
 export interface PredictionResult {
   symbol: string;
-  conservative: PredictionScenario;
-  bullish: PredictionScenario;
-  bearish: PredictionScenario;
+  conservative: EnhancedPredictionScenario;
+  bullish: EnhancedPredictionScenario;
+  bearish: EnhancedPredictionScenario;
   accuracy: AccuracyMetrics;
   confidence: number;
   timestamp: Date;

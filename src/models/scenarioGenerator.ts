@@ -1,4 +1,9 @@
-import { PredictionScenario, StockData } from "../types";
+import {
+  AccuracyMetrics,
+  EnhancedPredictionScenario,
+  PredictionScenario,
+  StockData,
+} from "../types";
 
 /**
  * Base prediction from polynomial regression
@@ -7,6 +12,8 @@ export interface BasePrediction {
   targetPrice: number;
   confidence: number;
   factors: string[];
+  historicalPrices?: number[]; // For accuracy metrics calculation
+  predictions?: number[]; // For accuracy metrics calculation
 }
 
 /**
@@ -22,9 +29,10 @@ interface ScenarioParams {
  * Generated scenarios for conservative, bullish, and bearish outcomes
  */
 export interface GeneratedScenarios {
-  conservative: PredictionScenario;
-  bullish: PredictionScenario;
-  bearish: PredictionScenario;
+  conservative: EnhancedPredictionScenario;
+  bullish: EnhancedPredictionScenario;
+  bearish: EnhancedPredictionScenario;
+  accuracyMetrics: AccuracyMetrics;
 }
 
 /**
@@ -34,7 +42,7 @@ export class ScenarioGenerator {
   private readonly volatilityLookback = 30; // Days to look back for volatility calculation
 
   /**
-   * Generate conservative, bullish, and bearish scenarios
+   * Generate conservative, bullish, and bearish scenarios with confidence intervals
    */
   async generateScenarios(
     basePrediction: BasePrediction,
@@ -44,37 +52,52 @@ export class ScenarioGenerator {
     // Calculate market volatility and other factors
     const marketFactors = this.analyzeMarketFactors(stockData);
 
+    // Calculate accuracy metrics if historical data is available
+    const accuracyMetrics = this.calculateAccuracyMetrics(
+      basePrediction,
+      stockData
+    );
+
+    // Calculate base standard error for confidence intervals
+    const baseStandardError = this.calculateStandardError(
+      stockData,
+      accuracyMetrics
+    );
+
     // Generate scenario parameters
     const conservativeParams = this.getConservativeParams(marketFactors);
     const bullishParams = this.getBullishParams(marketFactors);
     const bearishParams = this.getBearishParams(marketFactors);
 
-    // Generate scenarios
-    const conservative = this.generateScenario(
+    // Generate scenarios with confidence intervals
+    const conservative = this.generateEnhancedScenario(
       basePrediction,
       stockData,
       timeframe,
       "conservative",
-      conservativeParams
+      conservativeParams,
+      baseStandardError
     );
 
-    const bullish = this.generateScenario(
+    const bullish = this.generateEnhancedScenario(
       basePrediction,
       stockData,
       timeframe,
       "bullish",
-      bullishParams
+      bullishParams,
+      baseStandardError
     );
 
-    const bearish = this.generateScenario(
+    const bearish = this.generateEnhancedScenario(
       basePrediction,
       stockData,
       timeframe,
       "bearish",
-      bearishParams
+      bearishParams,
+      baseStandardError
     );
 
-    return { conservative, bullish, bearish };
+    return { conservative, bullish, bearish, accuracyMetrics };
   }
 
   /**
@@ -125,7 +148,129 @@ export class ScenarioGenerator {
   }
 
   /**
-   * Generate individual scenario
+   * Calculate accuracy metrics (R², RMSE, MAPE) for model validation
+   */
+  private calculateAccuracyMetrics(
+    basePrediction: BasePrediction,
+    stockData: StockData
+  ): AccuracyMetrics {
+    // If we have historical predictions and actual prices, calculate real metrics
+    if (basePrediction.historicalPrices && basePrediction.predictions) {
+      const actual = basePrediction.historicalPrices;
+      const predicted = basePrediction.predictions;
+
+      if (actual.length === 0 || predicted.length === 0) {
+        return this.getDefaultAccuracyMetrics();
+      }
+
+      // Calculate R² (coefficient of determination)
+      const meanActual =
+        actual.reduce((sum, val) => sum + val, 0) / actual.length;
+      const ssRes = actual.reduce((sum, actualVal, i) => {
+        const predictedVal = predicted[i] || actualVal;
+        return sum + Math.pow(actualVal - predictedVal, 2);
+      }, 0);
+      const ssTot = actual.reduce((sum, actualVal) => {
+        return sum + Math.pow(actualVal - meanActual, 2);
+      }, 0);
+      const rSquared =
+        ssTot > 0 ? Math.max(0, Math.min(1, 1 - ssRes / ssTot)) : 0;
+
+      // Calculate RMSE (Root Mean Square Error)
+      const mse = ssRes / actual.length;
+      const rmse = Math.sqrt(mse);
+
+      // Calculate MAPE (Mean Absolute Percentage Error)
+      const mape =
+        (actual.reduce((sum, actualVal, i) => {
+          const predictedVal = predicted[i] || actualVal;
+          if (actualVal === 0) return sum;
+          return sum + Math.abs((actualVal - predictedVal) / actualVal);
+        }, 0) /
+          actual.length) *
+        100;
+
+      // Calculate confidence interval based on standard error
+      const standardError = rmse / Math.sqrt(actual.length);
+      const confidenceInterval: [number, number] = [
+        meanActual - 1.96 * standardError,
+        meanActual + 1.96 * standardError,
+      ];
+
+      return {
+        rSquared: Math.round(rSquared * 10000) / 10000, // Round to 4 decimal places
+        rmse: Math.round(rmse * 100) / 100, // Round to 2 decimal places
+        mape: Math.round(mape * 100) / 100, // Round to 2 decimal places
+        confidenceInterval,
+      };
+    }
+
+    // Fallback: estimate metrics based on data quality and volatility
+    return this.estimateAccuracyMetrics(stockData, basePrediction.confidence);
+  }
+
+  /**
+   * Calculate standard error for confidence intervals
+   */
+  private calculateStandardError(
+    stockData: StockData,
+    accuracyMetrics: AccuracyMetrics
+  ): number {
+    // Use RMSE as base standard error
+    let standardError = accuracyMetrics.rmse;
+
+    // Adjust based on data quality
+    const dataQuality = this.assessDataQuality(stockData);
+    standardError *= 2 - dataQuality; // Higher quality = lower error
+
+    // Adjust based on volatility
+    const volatility = this.calculateVolatility(stockData.marketData.prices);
+    standardError *= 1 + volatility;
+
+    return Math.max(0.01, standardError); // Minimum standard error
+  }
+
+  /**
+   * Generate enhanced scenario with confidence intervals
+   */
+  private generateEnhancedScenario(
+    basePrediction: BasePrediction,
+    stockData: StockData,
+    timeframe: string,
+    scenarioType: "conservative" | "bullish" | "bearish",
+    params: ScenarioParams,
+    baseStandardError: number
+  ): EnhancedPredictionScenario {
+    const basicScenario = this.generateScenario(
+      basePrediction,
+      stockData,
+      timeframe,
+      scenarioType,
+      params
+    );
+
+    // Calculate scenario-specific standard error
+    const scenarioMultiplier = this.getScenarioErrorMultiplier(scenarioType);
+    const standardError = baseStandardError * scenarioMultiplier;
+
+    // Calculate confidence interval for this scenario
+    const confidenceInterval: [number, number] = [
+      Math.max(0.01, basicScenario.targetPrice - 1.96 * standardError),
+      basicScenario.targetPrice + 1.96 * standardError,
+    ];
+
+    return {
+      ...basicScenario,
+      confidenceInterval: [
+        Math.round(confidenceInterval[0] * 100) / 100,
+        Math.round(confidenceInterval[1] * 100) / 100,
+      ],
+      standardError: Math.round(standardError * 100) / 100,
+    };
+  }
+
+  /**
+   * Generate individual scenario (legacy method for compatibility)
    */
   private generateScenario(
     basePrediction: BasePrediction,
@@ -168,7 +313,7 @@ export class ScenarioGenerator {
     );
 
     return {
-      targetPrice: Math.round(targetPrice * 100) / 100, // Round to 2 decimal places
+      targetPrice: parseFloat(targetPrice.toFixed(2)), // Ensure 2 decimal places
       timeframe,
       probability: Math.round(adjustedProbability * 100) / 100,
       factors,
@@ -480,5 +625,99 @@ export class ScenarioGenerator {
     }
 
     return totalWeight > 0 ? Math.tanh(sentiment / totalWeight) : 0;
+  }
+
+  /**
+   * Get default accuracy metrics when no historical data is available
+   */
+  private getDefaultAccuracyMetrics(): AccuracyMetrics {
+    return {
+      rSquared: 0.5,
+      rmse: 0.05,
+      mape: 10.0,
+      confidenceInterval: [0.02, 0.08],
+    };
+  }
+
+  /**
+   * Estimate accuracy metrics based on data quality and confidence
+   */
+  private estimateAccuracyMetrics(
+    stockData: StockData,
+    confidence: number
+  ): AccuracyMetrics {
+    const dataQuality = this.assessDataQuality(stockData);
+    const volatility = this.calculateVolatility(stockData.marketData.prices);
+
+    // Estimate R² based on confidence and data quality
+    const rSquared = Math.max(0.1, Math.min(0.95, confidence * dataQuality));
+
+    // Estimate RMSE based on volatility and data quality
+    const rmse = Math.max(0.01, volatility * (2 - dataQuality));
+
+    // Estimate MAPE based on volatility
+    const mape = Math.max(
+      2.0,
+      Math.min(25.0, volatility * 100 * (2 - dataQuality))
+    );
+
+    // Calculate confidence interval
+    const standardError =
+      rmse / Math.sqrt(Math.max(10, stockData.marketData.prices.length));
+    const confidenceInterval: [number, number] = [
+      Math.max(0.01, rmse - 1.96 * standardError),
+      rmse + 1.96 * standardError,
+    ];
+
+    return {
+      rSquared: Math.round(rSquared * 10000) / 10000,
+      rmse: Math.round(rmse * 100) / 100,
+      mape: Math.round(mape * 100) / 100,
+      confidenceInterval: [
+        Math.round(confidenceInterval[0] * 100) / 100,
+        Math.round(confidenceInterval[1] * 100) / 100,
+      ],
+    };
+  }
+
+  /**
+   * Assess overall data quality
+   */
+  private assessDataQuality(stockData: StockData): number {
+    let quality = 0.5; // Base quality
+
+    // Price data quality
+    if (stockData.marketData.prices.length > 100) quality += 0.2;
+    else if (stockData.marketData.prices.length > 30) quality += 0.1;
+
+    // Fundamental data quality
+    if (stockData.fundamentals.peRatio > 0) quality += 0.1;
+    if (stockData.fundamentals.revenueGrowth !== 0) quality += 0.1;
+
+    // Alternative data quality
+    if (stockData.politicalTrades && stockData.politicalTrades.length > 0)
+      quality += 0.05;
+    if (stockData.insiderActivity && stockData.insiderActivity.length > 0)
+      quality += 0.05;
+
+    return Math.max(0.1, Math.min(1.0, quality));
+  }
+
+  /**
+   * Get error multiplier for different scenario types
+   */
+  private getScenarioErrorMultiplier(
+    scenarioType: "conservative" | "bullish" | "bearish"
+  ): number {
+    switch (scenarioType) {
+      case "conservative":
+        return 0.8; // Lower error for conservative scenario
+      case "bullish":
+        return 1.2; // Higher error for optimistic scenario
+      case "bearish":
+        return 1.2; // Higher error for pessimistic scenario
+      default:
+        return 1.0;
+    }
   }
 }

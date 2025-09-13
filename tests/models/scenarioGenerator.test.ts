@@ -72,6 +72,7 @@ describe("ScenarioGenerator", () => {
       expect(scenarios.conservative).toBeDefined();
       expect(scenarios.bullish).toBeDefined();
       expect(scenarios.bearish).toBeDefined();
+      expect(scenarios.accuracyMetrics).toBeDefined();
 
       // Conservative should have highest probability
       expect(scenarios.conservative.probability).toBeGreaterThan(
@@ -105,10 +106,21 @@ describe("ScenarioGenerator", () => {
         "30d"
       );
 
-      // Each scenario should have factors
+      // Each scenario should have factors and confidence intervals
       expect(scenarios.conservative.factors.length).toBeGreaterThan(0);
       expect(scenarios.bullish.factors.length).toBeGreaterThan(0);
       expect(scenarios.bearish.factors.length).toBeGreaterThan(0);
+
+      // Each scenario should have confidence intervals
+      expect(scenarios.conservative.confidenceInterval).toBeDefined();
+      expect(scenarios.conservative.confidenceInterval.length).toBe(2);
+      expect(scenarios.bullish.confidenceInterval).toBeDefined();
+      expect(scenarios.bearish.confidenceInterval).toBeDefined();
+
+      // Each scenario should have standard error
+      expect(scenarios.conservative.standardError).toBeGreaterThan(0);
+      expect(scenarios.bullish.standardError).toBeGreaterThan(0);
+      expect(scenarios.bearish.standardError).toBeGreaterThan(0);
 
       // Conservative should mention stability/risk-adjusted
       expect(
@@ -216,6 +228,31 @@ describe("ScenarioGenerator", () => {
       expect(allFactors.some((f) => f.toLowerCase().includes("insider"))).toBe(
         true
       );
+    });
+
+    it("should calculate accuracy metrics", async () => {
+      const basePrediction: BasePrediction = {
+        targetPrice: 150.0,
+        confidence: 0.75,
+        factors: ["Historical trend"],
+        historicalPrices: [100, 102, 104, 103, 105],
+        predictions: [101, 103, 103, 104, 106],
+      };
+
+      const scenarios = await generator.generateScenarios(
+        basePrediction,
+        mockStockData,
+        "30d"
+      );
+
+      // Should have accuracy metrics
+      expect(scenarios.accuracyMetrics).toBeDefined();
+      expect(scenarios.accuracyMetrics.rSquared).toBeGreaterThanOrEqual(0);
+      expect(scenarios.accuracyMetrics.rSquared).toBeLessThanOrEqual(1);
+      expect(scenarios.accuracyMetrics.rmse).toBeGreaterThan(0);
+      expect(scenarios.accuracyMetrics.mape).toBeGreaterThan(0);
+      expect(scenarios.accuracyMetrics.confidenceInterval).toBeDefined();
+      expect(scenarios.accuracyMetrics.confidenceInterval.length).toBe(2);
     });
   });
 
