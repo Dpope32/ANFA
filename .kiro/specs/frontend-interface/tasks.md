@@ -8,14 +8,14 @@
   - Install necessary dependencies for development
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 2. Implement core data types and interfaces
+- [x] 2. Implement core data types and interfaces
 
   - Create TypeScript interfaces for PredictionResult, ProgressUpdate, and ApiError
   - Define form validation types and error message constants
   - Create utility types for component props and events
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 3. Build API service layer
+- [x] 3. Build API service layer
 
   - Implement API service class with predict and checkHealth methods
   - Add proper error handling and response parsing
