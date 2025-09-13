@@ -1,369 +1,484 @@
 import { PredictionScenario, StockData } from "../types";
 
 /**
- * Scenario generator for creating conservative, bullish, and bearish predictions
+ * Base prediction from polynomial regression
+ */
+export interface BasePrediction {
+  targetPrice: number;
+  confidence: number;
+  factors: string[];
+}
+
+/**
+ * Scenario generation parameters
+ */
+interface ScenarioParams {
+  volatilityMultiplier: number;
+  confidenceAdjustment: number;
+  factorWeights: { [key: string]: number };
+}
+
+/**
+ * Generated scenarios for conservative, bullish, and bearish outcomes
+ */
+export interface GeneratedScenarios {
+  conservative: PredictionScenario;
+  bullish: PredictionScenario;
+  bearish: PredictionScenario;
+}
+
+/**
+ * Generates three prediction scenarios based on base prediction and market factors
  */
 export class ScenarioGenerator {
+  private readonly volatilityLookback = 30; // Days to look back for volatility calculation
+
   /**
-   * Generate three prediction scenarios
+   * Generate conservative, bullish, and bearish scenarios
    */
   async generateScenarios(
-    basePrediction: number[],
+    basePrediction: BasePrediction,
     stockData: StockData,
     timeframe: string
-  ): Promise<{
-    conservative: PredictionScenario;
-    bullish: PredictionScenario;
-    bearish: PredictionScenario;
-  }> {
-    try {
-      const lastPrice =
-        stockData.marketData.prices[stockData.marketData.prices.length - 1]
-          ?.close || 100;
-      const targetPrice =
-        basePrediction[basePrediction.length - 1] || lastPrice;
+  ): Promise<GeneratedScenarios> {
+    // Calculate market volatility and other factors
+    const marketFactors = this.analyzeMarketFactors(stockData);
 
-      // Calculate market sentiment factors
-      const sentimentFactors = this.calculateSentimentFactors(stockData);
+    // Generate scenario parameters
+    const conservativeParams = this.getConservativeParams(marketFactors);
+    const bullishParams = this.getBullishParams(marketFactors);
+    const bearishParams = this.getBearishParams(marketFactors);
 
-      // Generate conservative scenario
-      const conservative = this.generateConservativeScenario(
-        lastPrice,
-        targetPrice,
-        timeframe,
-        sentimentFactors
-      );
+    // Generate scenarios
+    const conservative = this.generateScenario(
+      basePrediction,
+      stockData,
+      timeframe,
+      "conservative",
+      conservativeParams
+    );
 
-      // Generate bullish scenario
-      const bullish = this.generateBullishScenario(
-        lastPrice,
-        targetPrice,
-        timeframe,
-        sentimentFactors
-      );
+    const bullish = this.generateScenario(
+      basePrediction,
+      stockData,
+      timeframe,
+      "bullish",
+      bullishParams
+    );
 
-      // Generate bearish scenario
-      const bearish = this.generateBearishScenario(
-        lastPrice,
-        targetPrice,
-        timeframe,
-        sentimentFactors
-      );
+    const bearish = this.generateScenario(
+      basePrediction,
+      stockData,
+      timeframe,
+      "bearish",
+      bearishParams
+    );
 
-      return { conservative, bullish, bearish };
-    } catch (error) {
-      console.error("Scenario generation failed:", error);
-      throw new Error(
-        `Failed to generate scenarios: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-    }
+    return { conservative, bullish, bearish };
   }
 
   /**
-   * Calculate sentiment factors from stock data
+   * Analyze market factors that influence scenario generation
    */
-  private calculateSentimentFactors(stockData: StockData): any {
-    const factors = {
-      politicalSentiment: 0,
-      insiderSentiment: 0,
-      optionsSentiment: 0,
-      fundamentalSentiment: 0,
-      technicalSentiment: 0,
-    };
-
-    // Political sentiment
-    if (stockData.politicalTrades && stockData.politicalTrades.length > 0) {
-      const recentTrades = stockData.politicalTrades.filter((trade) => {
-        const daysSince =
-          (Date.now() - trade.date.getTime()) / (1000 * 60 * 60 * 24);
-        return daysSince <= 30;
-      });
-
-      factors.politicalSentiment =
-        recentTrades.reduce((sum, trade) => {
-          const impact =
-            trade.impact === "HIGH" ? 3 : trade.impact === "MEDIUM" ? 2 : 1;
-          const direction = trade.tradeType === "BUY" ? 1 : -1;
-          return sum + direction * impact;
-        }, 0) / Math.max(1, recentTrades.length);
-    }
-
-    // Insider sentiment
-    if (stockData.insiderActivity && stockData.insiderActivity.length > 0) {
-      const recentActivity = stockData.insiderActivity.filter((activity) => {
-        const daysSince =
-          (Date.now() - activity.date.getTime()) / (1000 * 60 * 60 * 24);
-        return daysSince <= 30;
-      });
-
-      factors.insiderSentiment =
-        recentActivity.reduce((sum, activity) => {
-          const direction = activity.tradeType === "BUY" ? 1 : -1;
-          const weight = Math.log(activity.value + 1) / 10; // Log scale
-          return sum + direction * weight;
-        }, 0) / Math.max(1, recentActivity.length);
-    }
-
-    // Options sentiment - removed as SEC API doesn't provide options data
-    // This could be replaced with alternative sentiment indicators
-
-    // Fundamental sentiment
+  private analyzeMarketFactors(stockData: StockData): {
+    volatility: number;
+    trend: number;
+    volume: number;
+    fundamentalStrength: number;
+    politicalSentiment: number;
+    insiderSentiment: number;
+  } {
+    const prices = stockData.marketData.prices;
+    const volume = stockData.marketData.volume;
     const fundamentals = stockData.fundamentals;
-    if (fundamentals.peRatio > 0) {
-      factors.fundamentalSentiment =
-        this.calculateFundamentalSentiment(fundamentals);
-    }
 
-    // Technical sentiment
-    factors.technicalSentiment = this.calculateTechnicalSentiment(
-      stockData.marketData.prices
+    // Calculate historical volatility
+    const volatility = this.calculateVolatility(prices);
+
+    // Calculate price trend
+    const trend = this.calculateTrend(prices);
+
+    // Calculate volume trend
+    const volumeTrend = this.calculateVolumeTrend(volume);
+
+    // Assess fundamental strength
+    const fundamentalStrength = this.assessFundamentalStrength(fundamentals);
+
+    // Analyze political sentiment
+    const politicalSentiment = this.analyzePoliticalSentiment(
+      stockData.politicalTrades || []
     );
 
-    return factors;
-  }
-
-  /**
-   * Calculate fundamental sentiment
-   */
-  private calculateFundamentalSentiment(fundamentals: any): number {
-    let sentiment = 0;
-
-    // P/E ratio analysis
-    if (fundamentals.peRatio > 0 && fundamentals.peRatio < 25) {
-      sentiment += 0.2; // Reasonable P/E
-    } else if (fundamentals.peRatio > 25) {
-      sentiment -= 0.1; // High P/E
-    }
-
-    // Revenue growth
-    if (fundamentals.revenueGrowth > 0.1) {
-      sentiment += 0.3; // Strong growth
-    } else if (fundamentals.revenueGrowth < -0.1) {
-      sentiment -= 0.2; // Declining revenue
-    }
-
-    // EPS
-    if (fundamentals.eps > 0) {
-      sentiment += 0.1; // Profitable
-    } else {
-      sentiment -= 0.2; // Loss-making
-    }
-
-    return Math.max(-1, Math.min(1, sentiment));
-  }
-
-  /**
-   * Calculate technical sentiment
-   */
-  private calculateTechnicalSentiment(prices: any[]): number {
-    if (prices.length < 20) {
-      return 0;
-    }
-
-    const recentPrices = prices.slice(-20);
-    const firstPrice = recentPrices[0].close;
-    const lastPrice = recentPrices[recentPrices.length - 1].close;
-
-    // Price momentum
-    const momentum = (lastPrice - firstPrice) / firstPrice;
-
-    // Moving average trend
-    const shortMA =
-      recentPrices.slice(-5).reduce((sum, p) => sum + p.close, 0) / 5;
-    const longMA =
-      recentPrices.reduce((sum, p) => sum + p.close, 0) / recentPrices.length;
-    const maTrend = (shortMA - longMA) / longMA;
-
-    // Volatility
-    const returns = recentPrices
-      .slice(1)
-      .map((p, i) => (p.close - recentPrices[i].close) / recentPrices[i].close);
-    const volatility = Math.sqrt(
-      returns.reduce((sum, ret) => sum + ret * ret, 0) / returns.length
+    // Analyze insider sentiment
+    const insiderSentiment = this.analyzeInsiderSentiment(
+      stockData.insiderActivity || []
     );
 
-    let sentiment = momentum * 0.5 + maTrend * 0.3;
+    return {
+      volatility,
+      trend,
+      volume: volumeTrend,
+      fundamentalStrength,
+      politicalSentiment,
+      insiderSentiment,
+    };
+  }
 
-    // Reduce sentiment for high volatility
-    if (volatility > 0.05) {
-      sentiment *= 0.5;
+  /**
+   * Generate individual scenario
+   */
+  private generateScenario(
+    basePrediction: BasePrediction,
+    stockData: StockData,
+    timeframe: string,
+    scenarioType: "conservative" | "bullish" | "bearish",
+    params: ScenarioParams
+  ): PredictionScenario {
+    const lastPrice =
+      stockData.marketData.prices[stockData.marketData.prices.length - 1];
+    const currentPrice = lastPrice?.close || 100;
+
+    // Adjust target price based on scenario type
+    let targetPrice = basePrediction.targetPrice;
+
+    if (scenarioType === "bullish") {
+      targetPrice *= 1 + params.volatilityMultiplier;
+    } else if (scenarioType === "bearish") {
+      targetPrice *= 1 - params.volatilityMultiplier;
     }
 
-    return Math.max(-1, Math.min(1, sentiment));
-  }
+    // Ensure reasonable bounds
+    targetPrice = Math.max(
+      currentPrice * 0.5,
+      Math.min(currentPrice * 1.99, targetPrice)
+    );
 
-  /**
-   * Generate conservative scenario
-   */
-  private generateConservativeScenario(
-    lastPrice: number,
-    baseTarget: number,
-    timeframe: string,
-    sentimentFactors: any
-  ): PredictionScenario {
-    const baseChange = (baseTarget - lastPrice) / lastPrice;
+    // Calculate probability based on scenario type and confidence
+    const baseProbability = this.calculateBaseProbability(scenarioType);
+    const adjustedProbability = Math.max(
+      0.1,
+      Math.min(0.9, baseProbability * (1 + params.confidenceAdjustment))
+    );
 
-    // Conservative scenario: 70% of base prediction with reduced volatility
-    const conservativeChange = baseChange * 0.7;
-    const targetPrice = lastPrice * (1 + conservativeChange);
-
-    // Calculate probability based on data quality and sentiment
-    let probability = 0.6; // Base probability for conservative
-
-    // Adjust based on sentiment factors
-    const overallSentiment =
-      Object.values(sentimentFactors).reduce(
-        (sum: number, factor: any) => sum + factor,
-        0
-      ) / 5;
-    probability += overallSentiment * 0.1;
-
-    // Factors that support the prediction
-    const factors = this.getSupportingFactors(sentimentFactors, "conservative");
+    // Generate factors that influence this scenario
+    const factors = this.generateScenarioFactors(
+      stockData,
+      scenarioType,
+      params
+    );
 
     return {
-      targetPrice: Math.round(targetPrice * 100) / 100,
+      targetPrice: Math.round(targetPrice * 100) / 100, // Round to 2 decimal places
       timeframe,
-      probability: Math.max(0.3, Math.min(0.9, probability)),
+      probability: Math.round(adjustedProbability * 100) / 100,
       factors,
     };
   }
 
   /**
-   * Generate bullish scenario
+   * Get parameters for conservative scenario
    */
-  private generateBullishScenario(
-    lastPrice: number,
-    baseTarget: number,
-    timeframe: string,
-    sentimentFactors: any
-  ): PredictionScenario {
-    const baseChange = (baseTarget - lastPrice) / lastPrice;
-
-    // Bullish scenario: 150% of base prediction with positive sentiment boost
-    const bullishChange =
-      baseChange * 1.5 + Math.max(0, sentimentFactors.politicalSentiment * 0.1);
-    const targetPrice = lastPrice * (1 + bullishChange);
-
-    // Calculate probability
-    let probability = 0.4; // Lower base probability for bullish
-
-    // Boost probability with positive sentiment
-    if (sentimentFactors.politicalSentiment > 0) probability += 0.1;
-    if (sentimentFactors.insiderSentiment > 0) probability += 0.1;
-    if (sentimentFactors.optionsSentiment > 0) probability += 0.1;
-    if (sentimentFactors.fundamentalSentiment > 0) probability += 0.1;
-    if (sentimentFactors.technicalSentiment > 0) probability += 0.1;
-
-    const factors = this.getSupportingFactors(sentimentFactors, "bullish");
-
+  private getConservativeParams(marketFactors: any): ScenarioParams {
     return {
-      targetPrice: Math.round(targetPrice * 100) / 100,
-      timeframe,
-      probability: Math.max(0.2, Math.min(0.8, probability)),
-      factors,
+      volatilityMultiplier: Math.min(0.05, marketFactors.volatility * 0.5),
+      confidenceAdjustment: 0.1,
+      factorWeights: {
+        trend: 0.3,
+        fundamentals: 0.4,
+        volume: 0.2,
+        political: 0.05,
+        insider: 0.05,
+      },
     };
   }
 
   /**
-   * Generate bearish scenario
+   * Get parameters for bullish scenario
    */
-  private generateBearishScenario(
-    lastPrice: number,
-    baseTarget: number,
-    timeframe: string,
-    sentimentFactors: any
-  ): PredictionScenario {
-    const baseChange = (baseTarget - lastPrice) / lastPrice;
-
-    // Bearish scenario: 50% of base prediction with negative sentiment
-    const bearishChange =
-      baseChange * 0.5 + Math.min(0, sentimentFactors.politicalSentiment * 0.1);
-    const targetPrice = lastPrice * (1 + bearishChange);
-
-    // Calculate probability
-    let probability = 0.3; // Lower base probability for bearish
-
-    // Boost probability with negative sentiment
-    if (sentimentFactors.politicalSentiment < 0) probability += 0.1;
-    if (sentimentFactors.insiderSentiment < 0) probability += 0.1;
-    if (sentimentFactors.optionsSentiment < 0) probability += 0.1;
-    if (sentimentFactors.fundamentalSentiment < 0) probability += 0.1;
-    if (sentimentFactors.technicalSentiment < 0) probability += 0.1;
-
-    const factors = this.getSupportingFactors(sentimentFactors, "bearish");
+  private getBullishParams(marketFactors: any): ScenarioParams {
+    const volatilityBoost = marketFactors.trend > 0 ? 1.2 : 0.8;
 
     return {
-      targetPrice: Math.round(targetPrice * 100) / 100,
-      timeframe,
-      probability: Math.max(0.2, Math.min(0.7, probability)),
-      factors,
+      volatilityMultiplier: Math.min(
+        0.15,
+        marketFactors.volatility * volatilityBoost
+      ),
+      confidenceAdjustment: marketFactors.fundamentalStrength > 0 ? 0.2 : -0.1,
+      factorWeights: {
+        trend: 0.4,
+        fundamentals: 0.3,
+        volume: 0.1,
+        political: 0.1,
+        insider: 0.1,
+      },
     };
   }
 
   /**
-   * Get supporting factors for a scenario
+   * Get parameters for bearish scenario
    */
-  private getSupportingFactors(
-    sentimentFactors: any,
-    scenario: string
+  private getBearishParams(marketFactors: any): ScenarioParams {
+    const volatilityBoost = marketFactors.trend < 0 ? 1.2 : 0.8;
+
+    return {
+      volatilityMultiplier: Math.min(
+        0.15,
+        marketFactors.volatility * volatilityBoost
+      ),
+      confidenceAdjustment: marketFactors.fundamentalStrength < 0 ? 0.2 : -0.1,
+      factorWeights: {
+        trend: 0.4,
+        fundamentals: 0.3,
+        volume: 0.1,
+        political: 0.1,
+        insider: 0.1,
+      },
+    };
+  }
+
+  /**
+   * Calculate base probability for scenario type
+   */
+  private calculateBaseProbability(
+    scenarioType: "conservative" | "bullish" | "bearish"
+  ): number {
+    switch (scenarioType) {
+      case "conservative":
+        return 0.6; // Highest probability for most likely outcome
+      case "bullish":
+        return 0.25; // Lower probability for optimistic outcome
+      case "bearish":
+        return 0.25; // Lower probability for pessimistic outcome
+      default:
+        return 0.33;
+    }
+  }
+
+  /**
+   * Generate factors that influence the scenario
+   */
+  private generateScenarioFactors(
+    stockData: StockData,
+    scenarioType: "conservative" | "bullish" | "bearish",
+    _params: ScenarioParams
   ): string[] {
     const factors: string[] = [];
+    const marketFactors = this.analyzeMarketFactors(stockData);
 
-    if (Math.abs(sentimentFactors.politicalSentiment) > 0.3) {
+    // Add trend-based factors
+    if (Math.abs(marketFactors.trend) > 0.02) {
+      const trendDirection = marketFactors.trend > 0 ? "upward" : "downward";
+      factors.push(`Strong ${trendDirection} price trend`);
+    }
+
+    // Add volatility factors
+    if (marketFactors.volatility > 0.03) {
+      factors.push("High market volatility");
+    } else if (marketFactors.volatility < 0.01) {
+      factors.push("Low market volatility");
+    }
+
+    // Add fundamental factors
+    if (marketFactors.fundamentalStrength > 0.1) {
+      factors.push("Strong fundamental metrics");
+    } else if (marketFactors.fundamentalStrength < -0.1) {
+      factors.push("Weak fundamental metrics");
+    }
+
+    // Add volume factors
+    if (marketFactors.volume > 0.2) {
+      factors.push("Increasing trading volume");
+    } else if (marketFactors.volume < -0.2) {
+      factors.push("Decreasing trading volume");
+    }
+
+    // Add political factors
+    if (Math.abs(marketFactors.politicalSentiment) > 0.01) {
+      const sentiment =
+        marketFactors.politicalSentiment > 0 ? "positive" : "negative";
       factors.push(
-        `Political trading activity (${
-          sentimentFactors.politicalSentiment > 0 ? "positive" : "negative"
-        })`
+        `${
+          sentiment.charAt(0).toUpperCase() + sentiment.slice(1)
+        } political trading signals`
       );
     }
 
-    if (Math.abs(sentimentFactors.insiderSentiment) > 0.3) {
+    // Add insider factors
+    if (Math.abs(marketFactors.insiderSentiment) > 0.01) {
+      const sentiment =
+        marketFactors.insiderSentiment > 0 ? "positive" : "negative";
       factors.push(
-        `Insider trading patterns (${
-          sentimentFactors.insiderSentiment > 0 ? "buying" : "selling"
-        })`
-      );
-    }
-
-    if (Math.abs(sentimentFactors.optionsSentiment) > 0.3) {
-      factors.push(
-        `Unusual options activity (${
-          sentimentFactors.optionsSentiment > 0 ? "call" : "put"
-        } heavy)`
-      );
-    }
-
-    if (Math.abs(sentimentFactors.fundamentalSentiment) > 0.2) {
-      factors.push(
-        `Fundamental analysis (${
-          sentimentFactors.fundamentalSentiment > 0 ? "strong" : "weak"
-        })`
-      );
-    }
-
-    if (Math.abs(sentimentFactors.technicalSentiment) > 0.2) {
-      factors.push(
-        `Technical indicators (${
-          sentimentFactors.technicalSentiment > 0 ? "bullish" : "bearish"
-        })`
+        `${
+          sentiment.charAt(0).toUpperCase() + sentiment.slice(1)
+        } insider activity`
       );
     }
 
     // Add scenario-specific factors
-    if (scenario === "conservative") {
-      factors.push("Market volatility considerations");
-      factors.push("Risk-adjusted projections");
-    } else if (scenario === "bullish") {
+    if (scenarioType === "conservative") {
+      factors.push("Market stability assumptions");
+      factors.push("Risk-adjusted expectations");
+    } else if (scenarioType === "bullish") {
       factors.push("Optimistic market conditions");
-      factors.push("Growth potential");
-    } else if (scenario === "bearish") {
-      factors.push("Market headwinds");
-      factors.push("Downside risk factors");
+      factors.push("Positive momentum continuation");
+    } else if (scenarioType === "bearish") {
+      factors.push("Market correction potential");
+      factors.push("Risk-off sentiment");
     }
 
-    return factors;
+    // Ensure we have at least some factors
+    if (factors.length === 0) {
+      factors.push("Historical price patterns");
+      factors.push("Market regression analysis");
+    }
+
+    return factors.slice(0, 5); // Limit to 5 most relevant factors
+  }
+
+  /**
+   * Calculate price volatility
+   */
+  private calculateVolatility(prices: any[]): number {
+    if (prices.length < 2) return 0.02; // Default volatility
+
+    const returns: number[] = [];
+    for (
+      let i = 1;
+      i < Math.min(prices.length, this.volatilityLookback + 1);
+      i++
+    ) {
+      const currentPrice = prices[prices.length - i].close;
+      const previousPrice = prices[prices.length - i - 1].close;
+      returns.push((currentPrice - previousPrice) / previousPrice);
+    }
+
+    if (returns.length === 0) return 0.02;
+
+    const meanReturn =
+      returns.reduce((sum, ret) => sum + ret, 0) / returns.length;
+    const variance =
+      returns.reduce((sum, ret) => sum + Math.pow(ret - meanReturn, 2), 0) /
+      returns.length;
+
+    return Math.sqrt(variance * 252); // Annualized volatility
+  }
+
+  /**
+   * Calculate price trend
+   */
+  private calculateTrend(prices: any[]): number {
+    if (prices.length < 2) return 0;
+
+    const lookback = Math.min(prices.length, this.volatilityLookback);
+    const startPrice = prices[prices.length - lookback].close;
+    const endPrice = prices[prices.length - 1].close;
+
+    return (endPrice - startPrice) / startPrice;
+  }
+
+  /**
+   * Calculate volume trend
+   */
+  private calculateVolumeTrend(volume: any[]): number {
+    if (volume.length < 2) return 0;
+
+    const lookback = Math.min(volume.length, this.volatilityLookback);
+    const recentVolume = volume.slice(-Math.floor(lookback / 2));
+    const olderVolume = volume.slice(-lookback, -Math.floor(lookback / 2));
+
+    if (recentVolume.length === 0 || olderVolume.length === 0) return 0;
+
+    const recentAvg =
+      recentVolume.reduce((sum, v) => sum + v.volume, 0) / recentVolume.length;
+    const olderAvg =
+      olderVolume.reduce((sum, v) => sum + v.volume, 0) / olderVolume.length;
+
+    return olderAvg > 0 ? (recentAvg - olderAvg) / olderAvg : 0;
+  }
+
+  /**
+   * Assess fundamental strength
+   */
+  private assessFundamentalStrength(fundamentals: any): number {
+    let score = 0;
+
+    // P/E ratio assessment
+    if (fundamentals.peRatio > 0) {
+      if (fundamentals.peRatio < 15) {
+        score += 0.2; // Undervalued
+      } else if (fundamentals.peRatio > 30) {
+        score -= 0.2; // Overvalued
+      }
+    }
+
+    // Revenue growth assessment
+    if (fundamentals.revenueGrowth > 0.1) {
+      score += 0.3; // Strong growth
+    } else if (fundamentals.revenueGrowth < -0.05) {
+      score -= 0.3; // Declining revenue
+    }
+
+    // Forward P/E assessment
+    if (fundamentals.forwardPE > 0 && fundamentals.peRatio > 0) {
+      if (fundamentals.forwardPE < fundamentals.peRatio) {
+        score += 0.1; // Expected earnings growth
+      }
+    }
+
+    return Math.max(-1, Math.min(1, score));
+  }
+
+  /**
+   * Analyze political trading sentiment
+   */
+  private analyzePoliticalSentiment(politicalTrades: any[]): number {
+    if (!politicalTrades || politicalTrades.length === 0) return 0;
+
+    let sentiment = 0;
+    let totalWeight = 0;
+
+    const recentTrades = politicalTrades.filter((trade) => {
+      const daysSince =
+        (Date.now() - trade.date.getTime()) / (1000 * 60 * 60 * 24);
+      return daysSince <= 30; // Last 30 days
+    });
+
+    for (const trade of recentTrades) {
+      const direction = trade.tradeType === "BUY" ? 1 : -1;
+      const impact =
+        trade.impact === "HIGH" ? 3 : trade.impact === "MEDIUM" ? 2 : 1;
+      const weight = Math.log(trade.amount + 1) * impact;
+
+      sentiment += direction * weight;
+      totalWeight += weight;
+    }
+
+    return totalWeight > 0 ? Math.tanh(sentiment / totalWeight) : 0;
+  }
+
+  /**
+   * Analyze insider trading sentiment
+   */
+  private analyzeInsiderSentiment(insiderActivity: any[]): number {
+    if (!insiderActivity || insiderActivity.length === 0) return 0;
+
+    let sentiment = 0;
+    let totalWeight = 0;
+
+    const recentActivity = insiderActivity.filter((activity) => {
+      const daysSince =
+        (Date.now() - activity.date.getTime()) / (1000 * 60 * 60 * 24);
+      return daysSince <= 30; // Last 30 days
+    });
+
+    for (const activity of recentActivity) {
+      const direction = activity.tradeType === "BUY" ? 1 : -1;
+      const weight = Math.log(activity.value + 1);
+
+      sentiment += direction * weight;
+      totalWeight += weight;
+    }
+
+    return totalWeight > 0 ? Math.tanh(sentiment / totalWeight) : 0;
   }
 }

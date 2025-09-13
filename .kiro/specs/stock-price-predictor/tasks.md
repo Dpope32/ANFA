@@ -16,7 +16,7 @@
   - Implement Redis caching with source-specific TTL
   - _Requirements: 4.1, 4.2, 4.4, 2.1, 2.2, 2.3_
 
-- [ ] 3. Build polynomial regression prediction engine
+- [x] 3. Build polynomial regression prediction engine
 
   - Implement PolynomialRegression class with fit/predict methods
   - Add multivariate support for P/E ratio and volume when available

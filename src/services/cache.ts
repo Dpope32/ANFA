@@ -10,6 +10,13 @@ export class CacheService {
   private isConnected: boolean = false;
 
   constructor() {
+    // Skip Redis initialization in test environment
+    if (process.env.NODE_ENV === "test") {
+      this.isConnected = false;
+      this.redis = null;
+      return;
+    }
+
     try {
       this.redis = new Redis(config.redis.url, {
         password: config.redis.password,
@@ -141,7 +148,13 @@ export class CacheService {
    */
   async close(): Promise<void> {
     if (this.redis) {
-      await this.redis.quit();
+      try {
+        this.isConnected = false;
+        await this.redis.quit();
+        this.redis = null;
+      } catch (error) {
+        // Ignore errors during cleanup
+      }
     }
   }
 }

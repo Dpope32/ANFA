@@ -35,10 +35,25 @@ export class PredictionService {
       const model = await this.polynomialRegression.fit(features);
 
       // Generate base prediction
-      const basePrediction = await this.polynomialRegression.predict(
+      const predictions = await this.polynomialRegression.predict(
         model,
         timeframe
       );
+
+      // Convert to BasePrediction format
+      const basePrediction = {
+        targetPrice:
+          predictions[predictions.length - 1] ||
+          stockData.marketData.prices[stockData.marketData.prices.length - 1]
+            ?.close ||
+          100,
+        confidence: model.rSquared,
+        factors: [
+          `${model.features.join(", ")} analysis`,
+          `Polynomial degree ${model.degree}`,
+          `Training size: ${model.trainingSize} points`,
+        ],
+      };
 
       // Generate three scenarios
       const scenarios = await this.scenarioGenerator.generateScenarios(
