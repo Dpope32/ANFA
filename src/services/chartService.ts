@@ -193,7 +193,7 @@ export class ChartService {
         volumes.length
     );
 
-    volumeData.forEach((point, index) => {
+    volumeData.forEach((point, _index) => {
       const volume = point.volume;
       const zScore = Math.abs((volume - averageVolume) / volumeStd);
 

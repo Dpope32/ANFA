@@ -11,6 +11,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:connections": "ts-node scripts/test-connections.ts",
+    "test:app": "pnpm test && pnpm lint && pnpm test:connections",
     "verify": "ts-node scripts/verify-implementation.ts",
     "lint": "eslint src/**/*.ts",
     "docker:build": "docker build -t stock-price-predictor .",

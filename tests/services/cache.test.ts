@@ -21,8 +21,22 @@ describe("CacheService", () => {
     jest.clearAllMocks();
     cacheService = new CacheService();
     mockRedis = (cacheService as any).redis;
-    // Set connected status for tests
+    // Set connected status for tests and ensure redis is not null
     (cacheService as any).isConnected = true;
+    if (!mockRedis) {
+      // Create a mock redis instance if it's null
+      mockRedis = {
+        on: jest.fn(),
+        get: jest.fn(),
+        setex: jest.fn(),
+        keys: jest.fn(),
+        del: jest.fn(),
+        memory: jest.fn(),
+        quit: jest.fn(),
+        connect: jest.fn(),
+      };
+      (cacheService as any).redis = mockRedis;
+    }
   });
 
   afterEach(async () => {
@@ -136,14 +150,10 @@ describe("CacheService", () => {
 
   describe("getStats", () => {
     it("should return cache statistics when connected", async () => {
-      const mockMemory = { used_memory: 1024 };
-      mockRedis.memory.mockResolvedValue(mockMemory);
-
       const result = await cacheService.getStats();
 
       expect(result).toEqual({
         connected: true,
-        memory: mockMemory,
       });
     });
 
@@ -154,7 +164,6 @@ describe("CacheService", () => {
 
       expect(result).toEqual({
         connected: false,
-        memory: null,
       });
     });
   });

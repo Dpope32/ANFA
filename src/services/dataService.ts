@@ -33,7 +33,11 @@ export class DataService {
     // Try cache first
     const cached = await cacheService.get<StockData>(cacheKey);
     if (cached) {
-      return cached;
+      // Ensure timestamp is a Date object (it gets serialized as string in cache)
+      return {
+        ...cached,
+        timestamp: new Date(cached.timestamp),
+      };
     }
 
     try {
@@ -186,7 +190,7 @@ export class DataService {
 
     try {
       // Test Polygon using aggregates endpoint (available on free plans)
-      await this.getMarketData("AAPL");
+      await this.getMarketData("TSLA");
       results.polygon = true;
     } catch (error) {
       console.error("Polygon health check failed:", error);
@@ -194,7 +198,7 @@ export class DataService {
 
     try {
       // Test Finnhub with a simple request
-      await this.finnhubClient.getFundamentals("AAPL");
+      await this.finnhubClient.getFundamentals("TSLA");
       results.finnhub = true;
     } catch (error) {
       console.error("Finnhub health check failed:", error);
@@ -202,11 +206,11 @@ export class DataService {
 
     try {
       // Test SEC API with a simple request (try insider first)
-      await this.secApiClient.getInsiderActivity("AAPL");
+      await this.secApiClient.getInsiderActivity("TSLA");
       results.secApi = true;
     } catch (err1) {
       try {
-        await this.secApiClient.getPoliticalTrades("AAPL");
+        await this.secApiClient.getPoliticalTrades("TSLA");
         results.secApi = true;
       } catch (err2) {
         console.error("SEC API health check failed:", err2);

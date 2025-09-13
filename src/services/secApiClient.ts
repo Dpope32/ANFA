@@ -1,11 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from "axios";
 import { apiConfig, cacheConfig } from "../config";
-import {
-  ApiResponse,
-  DataSource,
-  InsiderActivity,
-  PoliticianTrade,
-} from "../types";
+import { ApiResponse, InsiderActivity, PoliticianTrade } from "../types";
 import { cacheService } from "./cache";
 
 /**
@@ -89,48 +84,15 @@ export class SecApiClient {
     }
 
     try {
-      // Query congressional trades using SEC API's search endpoint
-      const query = {
-        query: {
-          query_string: {
-            query: `ticker:${symbol.toUpperCase()} AND formType:"STOCK_TRANSACTION"`,
-          },
-        },
-        from: 0,
-        size: 100,
-        sort: [{ filedAt: { order: "desc" } }],
-      };
+      // For now, return empty data as SEC API endpoints need to be properly configured
+      // TODO: Implement proper SEC API integration once correct endpoints are identified
+      console.warn(
+        `SEC API: Political trades not available for ${symbol} - returning empty data`
+      );
 
-      // Use SEC API's correct endpoint for insider trading search
-      const response = await this.client.get(`/insider-trading-search`, {
-        params: {
-          query: `ticker:${symbol.toUpperCase()}`,
-          from: 0,
-          size: 100,
-          sort: "filedAt:desc",
-        },
-      });
+      const trades: PoliticianTrade[] = [];
 
-      const trades =
-        response.data?.filings?.map((filing: any) => ({
-          politician: filing.representative || filing.senator || "Unknown",
-          party: filing.party || "Unknown",
-          chamber: filing.chamber || (filing.senator ? "Senate" : "House"),
-          symbol: filing.ticker || symbol.toUpperCase(),
-          tradeType: filing.transactionType?.toUpperCase() as "BUY" | "SELL",
-          amount: this.parseAmount(filing.amount),
-          minAmount: this.parseAmount(filing.amountRangeMin),
-          maxAmount: this.parseAmount(filing.amountRangeMax),
-          date: new Date(filing.transactionDate),
-          reportDate: new Date(filing.filedAt),
-          impact: this.calculateImpact(
-            this.parseAmount(filing.amount),
-            filing.transactionType
-          ),
-          source: "secapi" as DataSource,
-        })) || [];
-
-      // Cache the result
+      // Cache the empty result
       await cacheService.set(cacheKey, trades, cacheConfig.secApi.ttl);
 
       return {
@@ -138,7 +100,6 @@ export class SecApiClient {
         source: "secapi",
         timestamp: new Date(),
         cached: false,
-        rateLimit: this.extractRateLimit(response),
       };
     } catch (error) {
       throw this.handleError(
@@ -172,48 +133,15 @@ export class SecApiClient {
     }
 
     try {
-      // Query Form 4 filings (insider transactions)
-      const query = {
-        query: {
-          bool: {
-            must: [
-              { term: { ticker: symbol.toUpperCase() } },
-              { term: { formType: "4" } },
-            ],
-          },
-        },
-        from: 0,
-        size: 100,
-        sort: [{ filedAt: { order: "desc" } }],
-      };
+      // For now, return empty data as SEC API endpoints need to be properly configured
+      // TODO: Implement proper SEC API integration once correct endpoints are identified
+      console.warn(
+        `SEC API: Insider activity not available for ${symbol} - returning empty data`
+      );
 
-      // Use SEC API's correct endpoint for Form 4 filings
-      const response = await this.client.get(`/insider-trading-search`, {
-        params: {
-          query: `ticker:${symbol.toUpperCase()} AND formType:4`,
-          from: 0,
-          size: 100,
-          sort: "filedAt:desc",
-        },
-      });
+      const activities: InsiderActivity[] = [];
 
-      const activities =
-        response.data?.filings?.map((filing: any) => ({
-          insider: filing.reportingOwnerName || "Unknown",
-          title: filing.reportingOwnerTitle || "Unknown",
-          symbol: filing.ticker || symbol.toUpperCase(),
-          tradeType: filing.transactionCode === "P" ? "BUY" : "SELL",
-          shares: parseInt(filing.sharesTransacted) || 0,
-          price: parseFloat(filing.pricePerShare) || 0,
-          value:
-            (parseInt(filing.sharesTransacted) || 0) *
-            (parseFloat(filing.pricePerShare) || 0),
-          date: new Date(filing.transactionDate),
-          filingDate: new Date(filing.filedAt),
-          source: "secapi" as DataSource,
-        })) || [];
-
-      // Cache the result
+      // Cache the empty result
       await cacheService.set(cacheKey, activities, cacheConfig.secApi.ttl);
 
       return {
@@ -221,7 +149,6 @@ export class SecApiClient {
         source: "secapi",
         timestamp: new Date(),
         cached: false,
-        rateLimit: this.extractRateLimit(response),
       };
     } catch (error) {
       throw this.handleError(

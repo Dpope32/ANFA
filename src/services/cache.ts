@@ -6,32 +6,58 @@ import { DataSource } from "../types";
  * Redis-based cache service with source-specific TTL
  */
 export class CacheService {
-  private redis: Redis;
+  private redis: Redis | null = null;
   private isConnected: boolean = false;
 
   constructor() {
-    this.redis = new Redis(config.redis.url, {
-      password: config.redis.password,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-    });
+    try {
+      this.redis = new Redis(config.redis.url, {
+        password: config.redis.password,
+        maxRetriesPerRequest: 1,
+        lazyConnect: true,
+        connectTimeout: 5000,
+      });
 
-    this.redis.on("connect", () => {
-      this.isConnected = true;
-      console.log("Redis connected successfully");
-    });
+      this.redis.on("connect", () => {
+        this.isConnected = true;
+        console.log("✅ Redis connected successfully");
+      });
 
-    this.redis.on("error", (error) => {
+      this.redis.on("error", (error) => {
+        this.isConnected = false;
+        console.warn(
+          "⚠️ Redis connection failed - caching disabled:",
+          error.message
+        );
+      });
+
+      this.redis.on("close", () => {
+        this.isConnected = false;
+        console.warn("⚠️ Redis connection closed - caching disabled");
+      });
+
+      // Try to connect immediately but don't fail if it doesn't work
+      this.redis.connect().catch((error) => {
+        console.warn(
+          "⚠️ Redis not available - continuing without cache:",
+          error.message
+        );
+      });
+    } catch (error) {
+      console.warn(
+        "⚠️ Redis initialization failed - continuing without cache:",
+        error
+      );
       this.isConnected = false;
-      console.error("Redis connection error:", error);
-    });
+      this.redis = null;
+    }
   }
 
   /**
    * Get cached data by key
    */
   async get<T>(key: string): Promise<T | null> {
-    if (!this.isConnected) {
+    if (!this.isConnected || !this.redis) {
       return null;
     }
 
@@ -51,7 +77,7 @@ export class CacheService {
    * Set cached data with TTL
    */
   async set<T>(key: string, data: T, ttlSeconds: number): Promise<boolean> {
-    if (!this.isConnected) {
+    if (!this.isConnected || !this.redis) {
       return false;
     }
 
@@ -81,7 +107,7 @@ export class CacheService {
    * Clear cache for specific symbol and source
    */
   async clearSymbol(source: DataSource, symbol: string): Promise<boolean> {
-    if (!this.isConnected) {
+    if (!this.isConnected || !this.redis) {
       return false;
     }
 
@@ -101,18 +127,13 @@ export class CacheService {
   /**
    * Get cache statistics
    */
-  async getStats(): Promise<{ connected: boolean; memory: any }> {
-    if (!this.isConnected) {
-      return { connected: false, memory: null };
+  async getStats(): Promise<{ connected: boolean; memory?: any }> {
+    if (!this.isConnected || !this.redis) {
+      return { connected: false };
     }
 
-    try {
-      const memory = await this.redis.memory("STATS");
-      return { connected: true, memory };
-    } catch (error) {
-      console.error("Cache stats error:", error);
-      return { connected: false, memory: null };
-    }
+    // Simplified stats - just return connected status
+    return { connected: true };
   }
 
   /**

@@ -213,7 +213,7 @@ export class ApiServer {
    */
   private setupErrorHandling(): void {
     this.app.use(
-      (error: any, req: Request, res: Response, next: NextFunction): void => {
+      (error: any, req: Request, res: Response, _next: NextFunction): void => {
         console.error("API Error:", error);
 
         // Handle known API errors
