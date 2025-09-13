@@ -1,2 +1,1 @@
-// Component exports will be added here
-export {};
+export { default as StockForm } from "./StockForm.svelte";

@@ -12,7 +12,7 @@ import {
 import { ChartService } from "../services/chartService";
 import { DataService } from "../services/dataService";
 import { PredictionService } from "../services/predictionService";
-import { ApiError } from "../types";
+import type { ApiError } from "../types";
 
 /**
  * Express.js API server for stock price prediction
@@ -713,13 +713,19 @@ export class ApiServer {
         console.error("API Error:", error);
 
         // Handle known API errors
-        if (error instanceof ApiError) {
-          res.status(error.statusCode).json({
+        if (
+          error &&
+          typeof error === "object" &&
+          "statusCode" in error &&
+          typeof (error as ApiError).statusCode === "number"
+        ) {
+          const apiError = error as ApiError;
+          res.status(apiError.statusCode).json({
             success: false,
             error: {
-              code: error.code,
-              message: error.message,
-              details: error.details,
+              code: apiError.code,
+              message: apiError.message,
+              details: apiError.details,
             },
           });
           return;
