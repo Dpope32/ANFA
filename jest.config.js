@@ -11,9 +11,36 @@ module.exports = {
       },
     ],
   },
-  collectCoverageFrom: ["src/**/*.ts", "!src/**/*.d.ts", "!src/index.ts"],
+  collectCoverageFrom: [
+    "src/**/*.ts", 
+    "!src/**/*.d.ts", 
+    "!src/index.ts",
+    "!src/**/index.ts",
+    "!src/**/*.interface.ts",
+    "!src/**/*.type.ts"
+  ],
   coverageDirectory: "coverage",
-  coverageReporters: ["text", "lcov", "html"],
+  coverageReporters: ["text", "lcov", "html", "json-summary"],
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70
+    },
+    "./src/api/": {
+      branches: 60,
+      functions: 60,
+      lines: 60,
+      statements: 60
+    },
+    "./src/services/": {
+      branches: 75,
+      functions: 75,
+      lines: 75,
+      statements: 75
+    }
+  },
   setupFilesAfterEnv: ["<rootDir>/tests/setup.ts"],
   testTimeout: 30000,
   moduleNameMapper: {

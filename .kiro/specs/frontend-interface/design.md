@@ -2,13 +2,15 @@
 
 ## Overview
 
-The frontend interface will be built as a SvelteKit application with TypeScript, providing a clean and responsive user interface for interacting with the existing stock prediction API. The application will feature real-time updates via WebSocket connections, server-side rendering for optimal performance, and a minimal bundle size for fast loading times.
+The frontend interface will be built as a SvelteKit application with TypeScript, providing a clean and responsive user interface for interacting with the existing stock prediction API. The application will feature real-time updates via WebSocket connections, server-side rendering for optimal performance, type-safe API calls with tRPC, robust form validation with Zod, and a minimal bundle size for fast loading times.
 
 ## Architecture
 
 ### Technology Stack
 
 - **Framework**: SvelteKit with TypeScript
+- **API Layer**: tRPC for type-safe API calls and shared schemas
+- **Validation**: Zod for schema validation and form validation
 - **Styling**: CSS with Svelte's scoped styling
 - **Real-time Communication**: WebSocket API with fallback to HTTP polling
 - **Build Tool**: Vite (included with SvelteKit)
@@ -26,11 +28,14 @@ frontend/
 │   │   │   ├── PredictionDisplay.svelte
 │   │   │   ├── LoadingSpinner.svelte
 │   │   │   └── ErrorMessage.svelte
+│   │   ├── trpc/
+│   │   │   ├── client.ts
+│   │   │   └── types.ts
+│   │   ├── schemas/
+│   │   │   ├── prediction.ts
+│   │   │   └── form.ts
 │   │   ├── services/
-│   │   │   ├── api.ts
 │   │   │   └── websocket.ts
-│   │   ├── types/
-│   │   │   └── prediction.ts
 │   │   └── utils/
 │   │       └── validation.ts
 │   ├── routes/
@@ -49,15 +54,22 @@ frontend/
 
 #### 1. StockForm Component
 
-**Purpose**: Input form for stock symbol and expiration date
+**Purpose**: Input form for stock symbol and expiration date with Zod validation
 **Props**: None (manages its own state)
-**Events**: `submit` - emits form data when validated
+**Events**: `submit` - emits validated form data
 
 ```typescript
-interface FormData {
-  symbol: string;
-  expirationDate: string;
-}
+// Using Zod schema for validation
+const formSchema = z.object({
+  symbol: z
+    .string()
+    .min(1)
+    .max(10)
+    .regex(/^[A-Z]+$/),
+  expirationDate: z.string().refine((date) => new Date(date) > new Date()),
+});
+
+type FormData = z.infer<typeof formSchema>;
 ```
 
 #### 2. PredictionDisplay Component
@@ -83,98 +95,142 @@ interface FormData {
 - `error: string | null`
 - `dismissible?: boolean`
 
-### Service Layer
+### tRPC Integration
 
-#### API Service (`src/lib/services/api.ts`)
+#### tRPC Client Setup (`src/lib/trpc/client.ts`)
 
 ```typescript
-interface ApiService {
-  predict(symbol: string, expirationDate: string): Promise<PredictionResult>;
-  checkHealth(): Promise<boolean>;
-}
+import { createTRPCProxyClient, httpBatchLink } from "@trpc/client";
+import type { AppRouter } from "../../../backend/src/trpc/router";
+
+export const trpc = createTRPCProxyClient<AppRouter>({
+  links: [
+    httpBatchLink({
+      url: "/api/trpc",
+    }),
+  ],
+});
 ```
 
-#### WebSocket Service (`src/lib/services/websocket.ts`)
+#### tRPC Types (`src/lib/trpc/types.ts`)
 
 ```typescript
-interface WebSocketService {
-  connect(url: string): void;
-  disconnect(): void;
-  onProgress(callback: (progress: ProgressUpdate) => void): void;
-  onComplete(callback: (result: PredictionResult) => void): void;
-  onError(callback: (error: string) => void): void;
-}
+import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "../../../backend/src/trpc/router";
+
+export type RouterInputs = inferRouterInputs<AppRouter>;
+export type RouterOutputs = inferRouterOutputs<AppRouter>;
+
+export type PredictionInput = RouterInputs["prediction"]["predict"];
+export type PredictionOutput = RouterOutputs["prediction"]["predict"];
 ```
 
-## Data Models
+## Data Models with Zod Schemas
 
-### Prediction Types
+### Prediction Schemas (`src/lib/schemas/prediction.ts`)
 
 ```typescript
-interface PredictionResult {
-  symbol: string;
-  predictedPrice: number;
-  confidence: number;
-  volatility: number;
-  timestamp: string;
-  expirationDate: string;
-  metadata?: {
-    processingTime: number;
-    modelVersion: string;
-  };
-}
+import { z } from "zod";
 
-interface ProgressUpdate {
-  stage: string;
-  progress: number; // 0-100
-  message: string;
-  timestamp: string;
-}
+export const predictionResultSchema = z.object({
+  symbol: z.string(),
+  predictedPrice: z.number().positive(),
+  confidence: z.number().min(0).max(1),
+  volatility: z.number().min(0),
+  timestamp: z.string().datetime(),
+  expirationDate: z.string().datetime(),
+  metadata: z
+    .object({
+      processingTime: z.number(),
+      modelVersion: z.string(),
+    })
+    .optional(),
+});
 
-interface ApiError {
-  code: string;
-  message: string;
-  details?: any;
-}
+export const progressUpdateSchema = z.object({
+  stage: z.string(),
+  progress: z.number().min(0).max(100),
+  message: z.string(),
+  timestamp: z.string().datetime(),
+});
+
+export const apiErrorSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  details: z.any().optional(),
+});
+
+export type PredictionResult = z.infer<typeof predictionResultSchema>;
+export type ProgressUpdate = z.infer<typeof progressUpdateSchema>;
+export type ApiError = z.infer<typeof apiErrorSchema>;
 ```
 
-### Form Validation
+### Form Schemas (`src/lib/schemas/form.ts`)
 
 ```typescript
-interface ValidationResult {
-  isValid: boolean;
-  errors: {
-    symbol?: string;
-    expirationDate?: string;
-  };
-}
+import { z } from "zod";
+
+export const stockFormSchema = z.object({
+  symbol: z
+    .string()
+    .min(1, "Stock symbol is required")
+    .max(10, "Stock symbol must be 10 characters or less")
+    .regex(/^[A-Z]+$/, "Stock symbol must contain only uppercase letters")
+    .transform((val) => val.toUpperCase()),
+  expirationDate: z
+    .string()
+    .min(1, "Expiration date is required")
+    .refine(
+      (date) => new Date(date) > new Date(),
+      "Expiration date must be in the future"
+    ),
+});
+
+export type StockFormData = z.infer<typeof stockFormSchema>;
+
+export const validationResultSchema = z.object({
+  isValid: z.boolean(),
+  errors: z.object({
+    symbol: z.string().optional(),
+    expirationDate: z.string().optional(),
+  }),
+});
+
+export type ValidationResult = z.infer<typeof validationResultSchema>;
 ```
 
 ## Error Handling
 
 ### Error Categories
 
-1. **Validation Errors**: Client-side form validation failures
-2. **Network Errors**: API connectivity issues
-3. **Server Errors**: Backend processing failures
+1. **Validation Errors**: Zod schema validation failures
+2. **tRPC Errors**: Type-safe API errors from tRPC
+3. **Network Errors**: Connection and timeout issues
 4. **WebSocket Errors**: Real-time connection issues
 
 ### Error Handling Strategy
 
-- Display user-friendly error messages
+- Use Zod for client-side validation with detailed error messages
+- Leverage tRPC's built-in error handling for API calls
 - Provide retry mechanisms for transient failures
-- Log detailed errors for debugging (development only)
 - Graceful degradation when WebSocket fails (fallback to polling)
 
 ### Error Display Patterns
 
 ```typescript
-const errorMessages = {
-  INVALID_SYMBOL: "Please enter a valid stock symbol (e.g., AAPL)",
-  INVALID_DATE: "Please select a future expiration date",
-  NETWORK_ERROR: "Unable to connect to the server. Please try again.",
-  SERVER_ERROR: "Server error occurred. Please try again later.",
-  WEBSOCKET_ERROR: "Real-time updates unavailable. Using standard mode.",
+import { TRPCError } from "@trpc/server";
+
+const handleTRPCError = (error: TRPCError) => {
+  switch (error.code) {
+    case "BAD_REQUEST":
+      return "Invalid request. Please check your input.";
+    case "INTERNAL_SERVER_ERROR":
+      return "Server error occurred. Please try again later.";
+    case "TIMEOUT":
+      return "Request timed out. Please try again.";
+    default:
+      return "An unexpected error occurred.";
+  }
 };
 ```
 
@@ -183,13 +239,14 @@ const errorMessages = {
 ### Unit Testing
 
 - Component testing with Vitest and Testing Library
-- Service layer testing for API and WebSocket services
-- Utility function testing for validation logic
+- Zod schema validation testing
+- tRPC client testing with mock responses
+- Utility function testing
 
 ### Integration Testing
 
 - End-to-end testing with Playwright
-- API integration testing
+- tRPC integration testing
 - WebSocket connection testing
 
 ### Test Structure
@@ -198,10 +255,10 @@ const errorMessages = {
 tests/
 ├── unit/
 │   ├── components/
-│   ├── services/
+│   ├── schemas/
 │   └── utils/
 ├── integration/
-│   └── api.test.ts
+│   └── trpc.test.ts
 └── e2e/
     └── prediction-flow.test.ts
 ```
@@ -210,21 +267,24 @@ tests/
 
 ### Bundle Size Optimization
 
-- Tree-shaking unused code
+- Tree-shaking unused tRPC procedures
 - Dynamic imports for non-critical components
 - Minimal external dependencies
+- Zod schema compilation optimization
 
 ### Loading Performance
 
 - Server-side rendering for initial page load
 - Progressive enhancement for JavaScript features
+- tRPC batching for multiple API calls
 - Optimized asset loading
 
 ### Runtime Performance
 
 - Reactive updates using Svelte's built-in reactivity
 - Efficient WebSocket connection management
-- Debounced form validation
+- Memoized Zod validation results
+- tRPC query caching
 
 ## Real-time Communication Design
 
@@ -241,7 +301,9 @@ class PredictionWebSocket {
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+      const rawData = JSON.parse(event.data);
+      // Validate with Zod schema
+      const data = progressUpdateSchema.parse(rawData);
       this.handleMessage(data);
     };
 
@@ -257,8 +319,8 @@ class PredictionWebSocket {
         this.connect();
       }, 1000 * this.reconnectAttempts);
     } else {
-      // Fallback to polling
-      this.startPolling();
+      // Fallback to tRPC polling
+      this.startTRPCPolling();
     }
   }
 }
@@ -269,7 +331,7 @@ class PredictionWebSocket {
 When WebSocket connection fails:
 
 1. Display notification about degraded functionality
-2. Switch to HTTP polling every 2 seconds
+2. Switch to tRPC polling every 2 seconds
 3. Provide manual refresh option
 4. Attempt WebSocket reconnection on next request
 
@@ -310,15 +372,15 @@ When WebSocket connection fails:
 
 ### Input Validation
 
-- Client-side validation for user experience
-- Server-side validation for security
+- Zod schema validation on both client and server
 - XSS prevention through proper escaping
 - CSRF protection for form submissions
+- tRPC's built-in type safety
 
 ### API Security
 
 - HTTPS enforcement in production
-- API rate limiting awareness
+- tRPC procedure-level authorization
 - Proper error message handling (no sensitive data exposure)
 
 ## Deployment Strategy
@@ -345,9 +407,9 @@ export default {
 
 ### Environment Configuration
 
-- Development: Local API endpoint
-- Production: Production API endpoint
+- Development: Local tRPC endpoint
+- Production: Production tRPC endpoint
 - Environment-specific WebSocket URLs
 - Feature flags for development features
 
-This design provides a solid foundation for a performant, maintainable frontend interface that integrates seamlessly with the existing stock prediction API while providing an excellent user experience.
+This design provides a robust, type-safe foundation for a performant frontend interface that integrates seamlessly with the existing stock prediction API while leveraging modern tools like tRPC and Zod for enhanced developer experience and runtime safety.
