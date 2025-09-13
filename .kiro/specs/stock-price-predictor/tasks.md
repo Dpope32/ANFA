@@ -61,8 +61,7 @@
   - Include health checks and proper networking
   - _Requirements: Deployment, Containerization_
 
-- [-] 8. Add basic continuous learning
-
+- [x] 8. Add basic continuous learning
 
   - Implement simple model performance logging
   - Create basic retraining trigger based on accuracy degradation

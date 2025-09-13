@@ -10,7 +10,7 @@ The Stock Price Prediction Algorithm is a hybrid quantitative-qualitative model 
 
 **User Story:** As a trader, I want to input a stock symbol and get price predictions, so that I can make profitable trades.
 
-#### Acceptance Criteria
+#### Acceptance Criteria 1
 
 1. WHEN a stock symbol is entered THEN the system SHALL fetch historical data and generate predictions
 2. WHEN predictions are complete THEN the system SHALL output conservative, bullish, and bearish price targets
@@ -20,7 +20,7 @@ The Stock Price Prediction Algorithm is a hybrid quantitative-qualitative model 
 
 **User Story:** As a trader, I want the system to use best-in-class data sources, so that predictions are more accurate.
 
-#### Acceptance Criteria
+#### Acceptance Criteria 2
 
 1. WHEN fetching price/volume data THEN the system SHALL use Polygon API for real-time and historical market data
 2. WHEN fetching fundamentals THEN the system SHALL use Finnhub API for P/E ratios and financial metrics
@@ -33,7 +33,7 @@ The Stock Price Prediction Algorithm is a hybrid quantitative-qualitative model 
 
 **User Story:** As a trader, I want insider trading data factored into predictions, so that I can capture edge from political trades.
 
-#### Acceptance Criteria
+#### Acceptance Criteria 3
 
 1. WHEN politician trades exist THEN the system SHALL adjust predictions accordingly
 2. WHEN unusual activity is detected THEN the system SHALL factor this into scenarios
@@ -42,7 +42,7 @@ The Stock Price Prediction Algorithm is a hybrid quantitative-qualitative model 
 
 **User Story:** As a trader, I want automatic data fetching from premium sources, so that I get the highest quality data without manual work.
 
-#### Acceptance Criteria
+#### Acceptance Criteria 4
 
 1. WHEN a stock symbol is entered THEN the system SHALL automatically fetch price/volume from Polygon, fundamentals from Finnhub, and congressional trades from SEC API
 2. WHEN any primary data source fails THEN the system SHALL gracefully degrade and continue with available data
@@ -53,7 +53,7 @@ The Stock Price Prediction Algorithm is a hybrid quantitative-qualitative model 
 
 **User Story:** As a trader, I want to see model performance visually, so that I can trust the predictions.
 
-#### Acceptance Criteria
+#### Acceptance Criteria 5
 
 1. WHEN predictions are generated THEN the system SHALL show charts with historical data and predictions
 2. WHEN displaying results THEN the system SHALL show accuracy metrics and confidence levels
@@ -62,7 +62,7 @@ The Stock Price Prediction Algorithm is a hybrid quantitative-qualitative model 
 
 **User Story:** As a trader, I want to analyze one stock at a time, so that I can focus on high-accuracy predictions.
 
-#### Acceptance Criteria
+#### Acceptance Criteria 6
 
 1. WHEN using the system THEN it SHALL process one stock per session
 2. WHEN analysis completes THEN the system SHALL show conservative, bullish, and bearish scenarios
@@ -71,10 +71,10 @@ The Stock Price Prediction Algorithm is a hybrid quantitative-qualitative model 
 
 **User Story:** As a system operator, I want continuous model improvement, so that predictions get more accurate over time.
 
-#### Acceptance Criteria
+#### Acceptance Criteria 7
 
 1. WHEN new market data becomes available THEN the system SHALL automatically retrain models
 2. WHEN model performance degrades THEN the system SHALL trigger retraining pipelines
 3. WHEN predictions are made THEN the system SHALL log actual vs predicted outcomes for learning
 4. WHEN sufficient new data exists THEN the system SHALL evaluate neural network models against polynomial regression
-5. WHEN deploying model updates THEN the system SHALL use A/B testing to validate improvements
+5. WHEN deploying model updates THEN the system SHALL use A/B testing to validate **improvements**

@@ -13,3 +13,11 @@ export { PolygonClient } from "./polygonClient";
 export { PredictionService } from "./predictionService";
 export { SecApiClient } from "./secApiClient";
 export { VisualizationService } from "./visualizationService";
+
+// Continuous learning services
+export {
+  ContinuousLearningService,
+  continuousLearningService,
+} from "./continuousLearning";
+export { ModelRegistry, modelRegistry } from "./modelRegistry";
+export { PerformanceLogger, performanceLogger } from "./performanceLogger";

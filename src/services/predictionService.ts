@@ -100,7 +100,7 @@ export class PredictionService {
         baseConfidence + adjustments.confidenceImpact
       );
 
-      return {
+      const predictionResult = {
         symbol: stockData.symbol,
         conservative: scenarios.conservative,
         bullish: scenarios.bullish,
@@ -109,6 +109,14 @@ export class PredictionService {
         confidence,
         timestamp: new Date(),
       };
+
+      // Process through continuous learning pipeline
+      await continuousLearningService.processPrediction(
+        stockData,
+        predictionResult
+      );
+
+      return predictionResult;
     } catch (error) {
       console.error(`Prediction failed for ${stockData.symbol}:`, error);
       throw new Error(
@@ -338,6 +346,18 @@ export class PredictionService {
    * Get model statistics
    */
   async getModelStats(): Promise<ModelStats> {
+    const activeModel = modelRegistry.getActiveModel("Polynomial Regression");
+    if (activeModel) {
+      return {
+        modelType: activeModel.modelType,
+        version: activeModel.version,
+        accuracy: activeModel.accuracy,
+        lastUpdated: activeModel.createdAt,
+        trainingDataSize: activeModel.trainingDataSize,
+      };
+    }
+
+    // Fallback to default stats
     return {
       modelType: "Polynomial Regression",
       version: "1.0.0",

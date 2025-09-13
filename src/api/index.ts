@@ -38,6 +38,9 @@ export class ApiServer {
     this.setupMiddleware();
     this.setupRoutes();
     this.setupErrorHandling();
+
+    // Initialize continuous learning system
+    this.initializeContinuousLearning();
   }
 
   /**
@@ -328,17 +331,359 @@ export class ApiServer {
         try {
           const cacheStats = await this.dataService.getCacheStats();
           const modelStats = await this.predictionService.getModelStats();
+          const continuousLearningStats =
+            continuousLearningService.getContinuousLearningStats();
 
           res.json({
             success: true,
             data: {
               cache: cacheStats,
               model: modelStats,
+              continuousLearning: continuousLearningStats,
               system: {
                 uptime: process.uptime(),
                 memory: process.memoryUsage(),
                 timestamp: new Date().toISOString(),
               },
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Continuous Learning API endpoints
+
+    // Get model registry information
+    this.app.get(
+      "/api/models",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { type } = req.query;
+          const modelType = (type as string) || "Polynomial Regression";
+
+          const models = modelRegistry.getModelsByType(modelType);
+          const activeModel = modelRegistry.getActiveModel(modelType);
+          const registryStats = modelRegistry.getRegistryStats();
+
+          res.json({
+            success: true,
+            data: {
+              models,
+              activeModel,
+              stats: registryStats,
+              metadata: {
+                modelType,
+                retrievedAt: new Date().toISOString(),
+              },
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Get model performance metrics
+    this.app.get(
+      "/api/models/:modelId/performance",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { modelId } = req.params;
+          const { period = "30d" } = req.query;
+
+          const performance = modelRegistry.getModelPerformance(
+            modelId,
+            period as string
+          );
+          const outcomes = modelRegistry.getPredictionOutcomes({
+            modelVersion: modelId,
+          });
+
+          res.json({
+            success: true,
+            data: {
+              performance,
+              outcomes: outcomes.slice(-50), // Last 50 outcomes
+              metadata: {
+                modelId,
+                period,
+                retrievedAt: new Date().toISOString(),
+              },
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Compare model performance
+    this.app.post(
+      "/api/models/compare",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { modelVersions, period = "30d" } = req.body;
+
+          if (!Array.isArray(modelVersions) || modelVersions.length < 2) {
+            res.status(400).json({
+              success: false,
+              error: {
+                code: "INVALID_MODELS",
+                message:
+                  "At least 2 model versions are required for comparison",
+              },
+            });
+            return;
+          }
+
+          const comparison = modelRegistry.compareModelPerformance(
+            modelVersions,
+            period
+          );
+
+          res.json({
+            success: true,
+            data: {
+              comparison,
+              metadata: {
+                modelVersions,
+                period,
+                comparedAt: new Date().toISOString(),
+              },
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Set active model
+    this.app.post(
+      "/api/models/:modelId/activate",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { modelId } = req.params;
+
+          const success = modelRegistry.setActiveModel(modelId);
+
+          if (!success) {
+            res.status(404).json({
+              success: false,
+              error: {
+                code: "MODEL_NOT_FOUND",
+                message: `Model ${modelId} not found`,
+              },
+            });
+            return;
+          }
+
+          res.json({
+            success: true,
+            data: {
+              message: `Model ${modelId} activated successfully`,
+              activatedAt: new Date().toISOString(),
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Trigger manual retraining
+    this.app.post(
+      "/api/models/retrain",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { modelType = "Polynomial Regression" } = req.body;
+
+          const success = await continuousLearningService.triggerRetraining(
+            modelType
+          );
+
+          res.json({
+            success,
+            data: {
+              message: success
+                ? `Retraining triggered for ${modelType}`
+                : `Failed to trigger retraining for ${modelType}`,
+              triggeredAt: new Date().toISOString(),
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Start A/B test
+    this.app.post(
+      "/api/ab-test/start",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { controlModelId, treatmentModelId, config } = req.body;
+
+          if (!controlModelId || !treatmentModelId) {
+            res.status(400).json({
+              success: false,
+              error: {
+                code: "MISSING_MODELS",
+                message:
+                  "Both controlModelId and treatmentModelId are required",
+              },
+            });
+            return;
+          }
+
+          const success = await continuousLearningService.startABTest(
+            controlModelId,
+            treatmentModelId,
+            config
+          );
+
+          if (!success) {
+            res.status(400).json({
+              success: false,
+              error: {
+                code: "AB_TEST_FAILED",
+                message:
+                  "Failed to start A/B test. Check if models exist and no test is currently running.",
+              },
+            });
+            return;
+          }
+
+          res.json({
+            success: true,
+            data: {
+              message: "A/B test started successfully",
+              test: continuousLearningService.getCurrentABTest(),
+              startedAt: new Date().toISOString(),
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Stop A/B test
+    this.app.post(
+      "/api/ab-test/stop",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const result = await continuousLearningService.stopABTest();
+
+          if (!result) {
+            res.status(400).json({
+              success: false,
+              error: {
+                code: "NO_AB_TEST",
+                message: "No A/B test is currently running",
+              },
+            });
+            return;
+          }
+
+          res.json({
+            success: true,
+            data: {
+              message: "A/B test stopped successfully",
+              result,
+              stoppedAt: new Date().toISOString(),
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Get current A/B test status
+    this.app.get(
+      "/api/ab-test/status",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const currentTest = continuousLearningService.getCurrentABTest();
+
+          res.json({
+            success: true,
+            data: {
+              currentTest,
+              isRunning: currentTest !== null,
+              retrievedAt: new Date().toISOString(),
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Get performance logger statistics
+    this.app.get(
+      "/api/performance",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const stats = performanceLogger.getPerformanceStats();
+          const pendingPredictions = performanceLogger.getPendingPredictions();
+
+          res.json({
+            success: true,
+            data: {
+              stats,
+              pendingPredictions: pendingPredictions.slice(0, 20), // First 20 pending
+              metadata: {
+                retrievedAt: new Date().toISOString(),
+              },
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Force check outcomes for a symbol
+    this.app.post(
+      "/api/performance/check/:symbol",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const { symbol } = req.params;
+
+          await performanceLogger.forceCheckOutcomes(symbol.toUpperCase());
+
+          res.json({
+            success: true,
+            data: {
+              message: `Outcomes checked for ${symbol}`,
+              checkedAt: new Date().toISOString(),
+            },
+          });
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+
+    // Update retraining configuration
+    this.app.post(
+      "/api/config/retraining",
+      async (req: Request, res: Response, next: NextFunction) => {
+        try {
+          const config = req.body;
+
+          continuousLearningService.updateRetrainingConfig(config);
+
+          res.json({
+            success: true,
+            data: {
+              message: "Retraining configuration updated",
+              config: modelRegistry.getRetrainingConfig(),
+              updatedAt: new Date().toISOString(),
             },
           });
         } catch (error) {
@@ -602,6 +947,21 @@ export class ApiServer {
         reject(error);
       }
     });
+  }
+
+  /**
+   * Initialize continuous learning system
+   */
+  private async initializeContinuousLearning(): Promise<void> {
+    try {
+      await continuousLearningService.initialize();
+      console.log("✅ Continuous learning system initialized");
+    } catch (error) {
+      console.error(
+        "❌ Failed to initialize continuous learning system:",
+        error
+      );
+    }
   }
 
   /**
