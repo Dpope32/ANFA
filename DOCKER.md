@@ -15,7 +15,7 @@ This document provides instructions for running the Stock Price Predictor using 
 cp env.example .env
 ```
 
-2. Edit `.env` and add your API keys:
+1. Edit `.env` and add your API keys:
 
 ```bash
 POLYGON_API_KEY=your_actual_polygon_api_key
@@ -72,10 +72,10 @@ This will start:
 
 Once running, the API will be available at:
 
-- **Development**: http://localhost:3000
-- **Production**: http://localhost (via Nginx)
+- **Development**: <http://localhost:3000>
+- **Production**: <http://localhost> (via Nginx)
 
-### Key Endpoints:
+### Key Endpoints
 
 - `GET /health` - Health check
 - `POST /api/predict` - Generate stock predictions
@@ -83,7 +83,7 @@ Once running, the API will be available at:
 - `POST /api/chart` - Generate chart data
 - `GET /api/status` - System status
 
-### Example Prediction Request:
+### Example Prediction Request
 
 ```bash
 curl -X POST http://localhost:3000/api/predict \
@@ -135,21 +135,21 @@ docker exec -it stock-predictor-redis redis-cli monitor
 
 ## Troubleshooting
 
-### Common Issues:
+### Common Issues
 
 1. **API keys not working**: Ensure `.env` file is properly configured
 2. **Redis connection failed**: Check if Redis container is running
 3. **Port conflicts**: Ensure ports 3000, 6379, and 80 are available
 4. **Build failures**: Clear Docker cache: `docker system prune -a`
 
-### Debug Mode:
+### Debug Mode
 
 ```bash
 # Run with debug logging
 docker-compose -f docker-compose.dev.yml up --build
 ```
 
-### Clean Restart:
+### Clean Restart
 
 ```bash
 # Stop and remove everything

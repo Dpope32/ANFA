@@ -7,6 +7,7 @@ The ANFA Volatility Scanner identifies money-printing opportunities using real d
 ## ✅ IMPLEMENTATION COMPLETE
 
 All services now use **REAL DATA** instead of mock data:
+
 - ✅ Real options chains from Polygon.io
 - ✅ Real price data from Polygon.io
 - ✅ Real fundamentals from Finnhub
@@ -19,26 +20,31 @@ All services now use **REAL DATA** instead of mock data:
 ## The Money-Printing Framework
 
 ### 1. Volatility Arbitrage (The Mathematical Edge)
+
 - Find options where IV is massively inflated or suppressed vs HV
 - Target IV/HV ratios > 1.5 (sell premium) or < 0.7 (buy premium)
 - Focus on high IV rank (>70%) situations
 
 ### 2. AI Infrastructure Catalyst (The Narrative)
+
 - Focus on pure-play AI infrastructure companies
 - Look for >40% YoY revenue growth in AI segments
 - Key targets: NVDA, AVGO, ORCL, AMD
 
 ### 3. Binary Earnings Events (The Timing)
+
 - 0-2 DTE options for maximum gamma
 - Buy the close before, sell the open after
 - Historical earnings moves >8%
 
 ### 4. Historical Volatility Precedent (The Expectation)
+
 - Companies with established track records of big moves
 - Compare expected move vs historical average
 - Look for mispricing opportunities
 
 ### 5. Market Structure Edge (The Setup)
+
 - Large-cap tech leaders with institutional positioning
 - Near technical levels (round numbers, support/resistance)
 - Strong options flow signals
@@ -46,13 +52,13 @@ All services now use **REAL DATA** instead of mock data:
 ## Quick Start
 
 ### 1. Install Dependencies
+
 ```bash
-npm install
-# or
 pnpm install
 ```
 
 ### 2. Configure Environment
+
 ```env
 # .env file
 POLYGON_API_KEY=your_polygon_key
@@ -61,11 +67,13 @@ SEC_API_KEY=your_sec_api_key
 ```
 
 ### 3. Run the Scanner
+
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ### 4. Find Opportunities
+
 ```typescript
 // Example: Find money-printing opportunities
 const response = await fetch('http://localhost:3000/api/scanner/opportunities', {
@@ -89,59 +97,77 @@ const opportunities = await response.json();
 ### Core Scanner Endpoints
 
 #### Scan for Opportunities
+
 ```http
 POST /api/scanner/opportunities
 ```
+
 Find volatility arbitrage opportunities across multiple symbols.
 
 #### Scan Options Flow
+
 ```http
 POST /api/scanner/flow
 ```
+
 Detect unusual options activity and smart money flow.
 
 #### Market Scan
+
 ```http
 POST /api/scanner/market
 ```
+
 Comprehensive market scan with conditions and top movers.
 
 #### Analyze Volatility
+
 ```http
 GET /api/scanner/volatility/:symbol
 ```
+
 Get empirical and implied volatility analysis.
 
 #### Check Liquidity
+
 ```http
 GET /api/scanner/liquidity/:symbol
 ```
+
 Analyze options liquidity and bid-ask spreads.
 
 #### Detect Patterns
+
 ```http
 POST /api/scanner/patterns
 ```
+
 Find squeeze, reversal, and breakout patterns.
 
 ### Options Data Endpoints
 
 #### Get Options Chain
+
 ```http
 GET /api/scanner/options/chain/:symbol
 ```
+
 Real-time options chain from Polygon.
 
 #### Options Snapshot
+
 ```http
 GET /api/scanner/options/snapshot/:symbol
 ```
+
 Current state of entire options chain.
 
 #### Most Active Options
+
 ```http
 GET /api/scanner/options/active
 ```
+
 Top volume options across the market.
 
 ## Position Sizing Framework
@@ -149,6 +175,7 @@ Top volume options across the market.
 For a $15-20K account:
 
 ### Conviction Levels
+
 - **Level 1** (10-15% of account): $1,500-3,000
   - Single signal present
   - Score 30-50
@@ -163,6 +190,7 @@ For a $15-20K account:
   - High confidence setup
 
 ### Entry Criteria Checklist
+
 - ✅ IV rank > 70% OR IV significantly compressed vs expected move
 - ✅ AI infrastructure revenue growth >40% YoY
 - ✅ Earnings within 0-2 DTE
@@ -170,6 +198,7 @@ For a $15-20K account:
 - ✅ Strong technical setup (near round numbers, support/resistance)
 
 ### Risk Management
+
 - Never risk more than 5% total account on any single trade
 - Exit at market open following earnings (no holding through decay)
 - Take profits at 200-300% gains
@@ -177,6 +206,7 @@ For a $15-20K account:
 ## Real-World Example
 
 ### AVGO Earnings Play (September 2024)
+
 ```javascript
 // Setup identified by scanner
 {
@@ -199,6 +229,7 @@ For a $15-20K account:
 ## Architecture
 
 ### Service Layer
+
 - `VolatilityScannerService`: Core scanning logic
 - `OptionsFlowService`: Real-time flow analysis
 - `PolygonOptionsService`: Options data integration
@@ -207,7 +238,8 @@ For a $15-20K account:
 - `LiquidityAnalyzer`: Liquidity metrics
 
 ### Data Flow
-```
+
+```bash
 Polygon.io ─┐
             ├─> Scanner ─> Analysis ─> Opportunities
 Finnhub ────┤
@@ -218,13 +250,15 @@ SEC API ────┘
 ## Testing
 
 Run the test suite:
+
 ```bash
-npm test
+pnpm test
 ```
 
 Run specific scanner tests:
+
 ```bash
-npm test -- volatility-scanner
+pnpm test -- volatility-scanner
 ```
 
 ## Performance
@@ -237,15 +271,17 @@ npm test -- volatility-scanner
 ## Deployment
 
 ### Docker
+
 ```bash
 docker build -t anfa-scanner .
 docker run -p 3000:3000 anfa-scanner
 ```
 
 ### Production
+
 ```bash
-npm run build
-npm start
+pnpm run build
+pnpm start
 ```
 
 ## Contributing
@@ -257,7 +293,7 @@ npm start
 
 ## Support
 
-- GitHub Issues: https://github.com/Dpope32/ANFA/issues
+- GitHub Issues: <https://github.com/Dpope32/ANFA/issues>
 - Documentation: See [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
 
 ## License

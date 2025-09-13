@@ -4,7 +4,7 @@ A SvelteKit frontend application for the stock prediction system.
 
 ## Project Structure
 
-```
+```bash
 src/
 ├── lib/
 │   ├── components/     # Svelte components
@@ -21,16 +21,16 @@ src/
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Start development server
-npm run dev
+pnpm run dev
 
 # Build for production
-npm run build
+pnpm run build
 
 # Preview production build
-npm run preview
+pnpm run preview
 ```
 
 ## Technologies

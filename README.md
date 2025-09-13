@@ -56,13 +56,14 @@ Every trade exists across multiple dimensions —-- entry timing, day of week, t
    ```
 
 5. **Run in development:**
+
    ```bash
    pnpm run dev
    ```
 
 ## Project Structure
 
-```
+```bash
 src/
 ├── api/          # API layer and endpoints
 ├── config/       # Environment configuration
