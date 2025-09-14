@@ -2,6 +2,9 @@ import compression from "compression";
 import cors from "cors";
 import express, { NextFunction, Request, Response } from "express";
 import helmet from "helmet";
+import { modelRegistry } from "../services/modelRegistry";
+import { continuousLearningService } from "../services/continuousLearning";
+import { performanceLogger } from "../services/performanceLogger";
 import morgan from "morgan";
 import { config } from "../config";
 import {
@@ -720,7 +723,7 @@ export class ApiServer {
           typeof (error as ApiError).statusCode === "number"
         ) {
           const apiError = error as ApiError;
-          res.status(apiError.statusCode).json({
+          res.status(apiError.statusCode || 500).json({
             success: false,
             error: {
               code: apiError.code,

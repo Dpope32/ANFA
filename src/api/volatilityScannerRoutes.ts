@@ -201,7 +201,7 @@ export class VolatilityScannerRoutes {
               skew: {
                 // Placeholder until empirical volatility service is implemented
                 value: 0,
-                direction: 'neutral',
+                direction: "neutral",
               },
               timestamp: new Date().toISOString(),
             },
@@ -254,9 +254,13 @@ export class VolatilityScannerRoutes {
       "/patterns",
       async (req: Request, res: Response, next: NextFunction) => {
         try {
-          const { symbols, patterns = ["squeeze", "reversal", "breakout"] } =
+          let { symbols, patterns = ["squeeze", "reversal", "breakout"] } =
             req.body;
-
+          if (patterns) {
+            // remove duplicate patterns if any, and also convert to lowercase
+            patterns = [...new Set(patterns.map((pattern: string) => pattern.toLowerCase()))];
+            console.log(patterns);
+          }
           if (!symbols || !Array.isArray(symbols)) {
             return res.status(400).json({
               success: false,
