@@ -19,7 +19,7 @@ The frontend interface will be built as a SvelteKit application with TypeScript,
 
 ### Application Structure
 
-```
+```bash
 frontend/
 ├── src/
 │   ├── lib/
@@ -251,7 +251,7 @@ const handleTRPCError = (error: TRPCError) => {
 
 ### Test Structure
 
-```
+```bash
 tests/
 ├── unit/
 │   ├── components/

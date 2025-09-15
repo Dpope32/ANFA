@@ -1,48 +1,145 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import {
-    INVALID_SYMBOL,
-    type StockFormFields,
-    type ValidationErrors,
-    type FormProps,
-    type ErrorEvent,
-  } from "../../../../src/types";
+  import { 
+    stockFormSchema, 
+    predictionRequestSchema,
+    validateStockForm,
+    type StockFormData, 
+    type FormValidationErrors,
+    type PredictionRequest
+  } from "../schemas";
+  import { trpcClient } from "../trpc";
+  import type { PredictionResult } from "../trpc/types";
 
-  export let onSubmit: FormProps["onSubmit"];
+  // Component props
+  export let onPredictionResult: ((result: PredictionResult) => void) | undefined = undefined;
+  export let onError: ((error: Error) => void) | undefined = undefined;
 
-  const dispatch = createEventDispatcher<ErrorEvent>();
+  // Event dispatcher for custom events
+  const dispatch = createEventDispatcher<{
+    submit: StockFormData;
+    success: PredictionResult;
+    error: Error;
+    validationError: FormValidationErrors;
+  }>();
 
-  let fields: StockFormFields = {
+  // Form state
+  let formData: StockFormData = {
     symbol: "",
     startDate: new Date().toISOString().split('T')[0],
     endDate: "",
   };
 
-  let errors: ValidationErrors = {};
+  let errors: FormValidationErrors = {};
   let isLoading = false;
+  let hasBeenSubmitted = false;
 
-  function validate(): ValidationErrors {
-    const result: ValidationErrors = {};
-    if (!fields.symbol || fields.symbol.trim() === "") {
-      result.symbol = INVALID_SYMBOL;
-    }
-    return result;
-  }
-
-  async function handleSubmit() {
-    errors = validate();
-    if (Object.keys(errors).length === 0) {
-      isLoading = true;
-      try {
-        fields.startDate = new Date().toISOString().split('T')[0];
-        await onSubmit(fields);
-      } catch (error) {
-        console.error("Prediction error:", error);
-        dispatch("error", { error: error as any });
-      } finally {
-        isLoading = false;
+  // Real-time validation on input change
+  function validateField(field: keyof StockFormData, value: any) {
+    try {
+      // Validate the specific field
+      const fieldSchema = stockFormSchema.shape[field];
+      fieldSchema.parse(value);
+      
+      // Clear error for this field if validation passes
+      if (errors[field]) {
+        errors = { ...errors, [field]: undefined };
+      }
+    } catch (error) {
+      if (error instanceof Error && 'errors' in error) {
+        const zodError = error as any;
+        errors = {
+          ...errors,
+          [field]: zodError.errors?.map((e: any) => e.message) || [error.message]
+        };
       }
     }
+  }
+
+  // Handle input changes with real-time validation
+  function handleInputChange(field: keyof StockFormData, value: any) {
+    formData = { ...formData, [field]: value };
+    
+    // Only validate after first submission attempt or if there's already an error
+    if (hasBeenSubmitted || errors[field]) {
+      validateField(field, value);
+    }
+  }
+
+  // Validate entire form
+  function validateForm(): boolean {
+    const validation = validateStockForm(formData);
+    
+    if (!validation.success) {
+      errors = validation.errors || {};
+      dispatch("validationError", errors);
+      return false;
+    }
+    
+    errors = {};
+    return true;
+  }
+
+  // Handle form submission
+  async function handleSubmit() {
+    hasBeenSubmitted = true;
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    isLoading = true;
+    
+    try {
+      // Convert form data to prediction request
+      const predictionRequest: PredictionRequest = {
+        symbol: formData.symbol,
+        timeframe: "30d" // Default timeframe
+      };
+
+      // Validate the prediction request
+      const validatedRequest = predictionRequestSchema.parse(predictionRequest);
+      
+      // Make the API call through tRPC client
+      const result = await trpcClient.predict(validatedRequest);
+      
+      // Dispatch success events
+      dispatch("submit", formData);
+      dispatch("success", result);
+      
+      // Call callback props if provided
+      if (onPredictionResult) {
+        onPredictionResult(result);
+      }
+      
+    } catch (error) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      
+      console.error("Prediction error:", errorObj);
+      
+      // Dispatch error event
+      dispatch("error", errorObj);
+      
+      // Call error callback if provided
+      if (onError) {
+        onError(errorObj);
+      }
+      
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  // Get the first error message for a field
+  function getFieldError(field: keyof StockFormData): string | undefined {
+    const fieldErrors = errors[field];
+    return fieldErrors && fieldErrors.length > 0 ? fieldErrors[0] : undefined;
+  }
+
+  // Check if a field has an error
+  function hasFieldError(field: keyof StockFormData): boolean {
+    const fieldErrors = errors[field];
+    return Boolean(fieldErrors && fieldErrors.length > 0);
   }
 </script>
 
@@ -53,12 +150,13 @@
       <input 
         id="symbol"
         type="text" 
-        bind:value={fields.symbol} 
+        bind:value={formData.symbol} 
+        on:input={(e) => handleInputChange('symbol', e.currentTarget.value)}
         placeholder="TSLA, AAPL"
         disabled={isLoading}
       />
-      {#if errors.symbol}
-        <span class="error">{errors.symbol}</span>
+      {#if hasFieldError('symbol')}
+        <span class="error">{getFieldError('symbol')}</span>
       {/if}
     </div>
 
@@ -67,10 +165,14 @@
       <input 
         id="endDate"
         type="date" 
-        bind:value={fields.endDate} 
+        bind:value={formData.endDate}
+        on:input={(e) => handleInputChange('endDate', e.currentTarget.value)} 
         disabled={isLoading}
       />
       <p class="helper">Leave blank for next trading day prediction</p>
+      {#if hasFieldError('endDate')}
+        <span class="error">{getFieldError('endDate')}</span>
+      {/if}
     </div>
 
     <button type="submit" disabled={isLoading}>

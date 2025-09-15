@@ -583,8 +583,10 @@ export class ScenarioGenerator {
     let totalWeight = 0;
 
     const recentTrades = politicalTrades.filter((trade) => {
+      // Ensure trade.date is a Date object
+      const tradeDate = trade.date instanceof Date ? trade.date : new Date(trade.date);
       const daysSince =
-        (Date.now() - trade.date.getTime()) / (1000 * 60 * 60 * 24);
+        (Date.now() - tradeDate.getTime()) / (1000 * 60 * 60 * 24);
       return daysSince <= 30; // Last 30 days
     });
 
@@ -611,8 +613,10 @@ export class ScenarioGenerator {
     let totalWeight = 0;
 
     const recentActivity = insiderActivity.filter((activity) => {
+      // Ensure activity.date is a Date object
+      const activityDate = activity.date instanceof Date ? activity.date : new Date(activity.date);
       const daysSince =
-        (Date.now() - activity.date.getTime()) / (1000 * 60 * 60 * 24);
+        (Date.now() - activityDate.getTime()) / (1000 * 60 * 60 * 24);
       return daysSince <= 30; // Last 30 days
     });
 

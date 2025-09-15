@@ -321,7 +321,12 @@ export class ChartGenerator {
       });
     });
 
-    return markers.sort((a, b) => a.date.getTime() - b.date.getTime());
+    return markers.sort((a, b) => {
+      // Ensure both dates are Date objects
+      const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+      const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+      return dateA.getTime() - dateB.getTime();
+    });
   }
 
   /**

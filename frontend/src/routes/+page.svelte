@@ -1,12 +1,19 @@
 <script lang="ts">
   import { StockForm, ModelAccuracy } from "$lib/components";
-  import { fetchPrediction } from "$lib/services";
-  import type { StockFormFields, PredictionResult } from "../../../src/types";
+  import type { PredictionResult } from "$lib/trpc/types";
 
   let result: PredictionResult | null = null;
+  let error: string | null = null;
 
-  async function handleSubmit(fields: StockFormFields) {
-    result = await fetchPrediction(fields, (p) => console.log(p));
+  function handlePredictionResult(predictionResult: PredictionResult) {
+    result = predictionResult;
+    error = null;
+  }
+
+  function handleError(err: Error) {
+    error = err.message;
+    result = null;
+    console.error("Prediction error:", err);
   }
 </script>
 
@@ -21,12 +28,52 @@
 
 <div class="app-container">
   <main class="main-content">
-    <StockForm onSubmit={handleSubmit} on:error={(e) => console.error(e.detail.error)} />
+    <StockForm 
+      onPredictionResult={handlePredictionResult} 
+      onError={handleError}
+      on:success={(e) => handlePredictionResult(e.detail)}
+      on:error={(e) => handleError(e.detail)}
+    />
   </main>
+  
+  {#if error}
+    <div class="error-container">
+      <h3>Error</h3>
+      <p>{error}</p>
+    </div>
+  {/if}
   
   {#if result}
     <div class="result-container">
-      <pre>{JSON.stringify(result, null, 2)}</pre>
+      <h3>Prediction Results for {result.symbol}</h3>
+      <div class="prediction-scenarios">
+        <div class="scenario">
+          <h4>Conservative Scenario</h4>
+          <p>Target Price: ${result.conservative.targetPrice.toFixed(2)}</p>
+          <p>Probability: {(result.conservative.probability * 100).toFixed(1)}%</p>
+        </div>
+        <div class="scenario">
+          <h4>Bullish Scenario</h4>
+          <p>Target Price: ${result.bullish.targetPrice.toFixed(2)}</p>
+          <p>Probability: {(result.bullish.probability * 100).toFixed(1)}%</p>
+        </div>
+        <div class="scenario">
+          <h4>Bearish Scenario</h4>
+          <p>Target Price: ${result.bearish.targetPrice.toFixed(2)}</p>
+          <p>Probability: {(result.bearish.probability * 100).toFixed(1)}%</p>
+        </div>
+      </div>
+      <div class="accuracy-info">
+        <h4>Model Accuracy</h4>
+        <p>R-squared: {result.accuracy.rSquared.toFixed(3)}</p>
+        <p>RMSE: {result.accuracy.rmse.toFixed(2)}</p>
+        <p>MAPE: {result.accuracy.mape.toFixed(2)}%</p>
+        <p>Overall Confidence: {(result.confidence * 100).toFixed(1)}%</p>
+      </div>
+      <details class="raw-data">
+        <summary>Raw Data</summary>
+        <pre>{JSON.stringify(result, null, 2)}</pre>
+      </details>
     </div>
   {/if}
 </div>
@@ -78,6 +125,22 @@
     margin: 0 auto;
   }
 
+  .error-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    background: #fef2f2;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #fecaca;
+    color: #dc2626;
+  }
+
+  .error-container h3 {
+    margin: 0 0 1rem 0;
+    color: #dc2626;
+  }
+
   .result-container {
     max-width: 800px;
     margin: 2rem auto;
@@ -88,10 +151,83 @@
     border: 1px solid #e9ecef;
   }
 
-  .result-container pre {
+  .result-container h3 {
+    margin: 0 0 1.5rem 0;
+    color: #1f2937;
+    font-size: 1.25rem;
+  }
+
+  .prediction-scenarios {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .scenario {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 1rem;
+    border: 1px solid #e9ecef;
+  }
+
+  .scenario h4 {
+    margin: 0 0 0.5rem 0;
+    color: #495057;
+    font-size: 1rem;
+  }
+
+  .scenario p {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+    color: #6c757d;
+  }
+
+  .accuracy-info {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 1rem;
+    border: 1px solid #e9ecef;
+    margin-bottom: 2rem;
+  }
+
+  .accuracy-info h4 {
+    margin: 0 0 0.5rem 0;
+    color: #495057;
+  }
+
+  .accuracy-info p {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+    color: #6c757d;
+  }
+
+  .raw-data {
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .raw-data summary {
+    background: #f8f9fa;
+    padding: 1rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: #495057;
+  }
+
+  .raw-data summary:hover {
+    background: #e9ecef;
+  }
+
+  .raw-data pre {
     margin: 0;
+    padding: 1rem;
     white-space: pre-wrap;
     word-break: break-word;
+    background: #f8f9fa;
+    font-size: 0.8rem;
+    overflow-x: auto;
   }
 
   @media (max-width: 768px) {

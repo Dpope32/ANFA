@@ -253,7 +253,8 @@ export class PerformanceLogger {
    * Generate unique prediction ID
    */
   private generatePredictionId(prediction: PredictionResult): string {
-    const timestamp = prediction.timestamp.getTime();
+    // Ensure timestamp is a Date object
+    const timestamp = prediction.timestamp instanceof Date ? prediction.timestamp.getTime() : new Date(prediction.timestamp).getTime();
     const symbol = prediction.symbol;
     return `${symbol}-${timestamp}`;
   }

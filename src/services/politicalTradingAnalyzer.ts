@@ -233,8 +233,10 @@ export class PoliticalTradingAnalyzer {
 
     // Check for recent high-value trades
     const recentTrades = politicalTrades.filter((trade) => {
+      // Ensure trade.date is a Date object
+      const tradeDate = trade.date instanceof Date ? trade.date : new Date(trade.date);
       const daysSince =
-        (Date.now() - trade.date.getTime()) / (1000 * 60 * 60 * 24);
+        (Date.now() - tradeDate.getTime()) / (1000 * 60 * 60 * 24);
       return daysSince <= 7;
     });
 
@@ -253,8 +255,10 @@ export class PoliticalTradingAnalyzer {
     for (const [party, trades] of Object.entries(partyGroups)) {
       if (trades.length >= 3) {
         const recentPartyTrades = trades.filter((trade) => {
+          // Ensure trade.date is a Date object
+          const tradeDate = trade.date instanceof Date ? trade.date : new Date(trade.date);
           const daysSince =
-            (Date.now() - trade.date.getTime()) / (1000 * 60 * 60 * 24);
+            (Date.now() - tradeDate.getTime()) / (1000 * 60 * 60 * 24);
           return daysSince <= 30;
         });
 
@@ -316,8 +320,10 @@ export class PoliticalTradingAnalyzer {
 
     // Check for recent high-value trades
     const recentActivity = insiderActivity.filter((activity) => {
+      // Ensure activity.date is a Date object
+      const activityDate = activity.date instanceof Date ? activity.date : new Date(activity.date);
       const daysSince =
-        (Date.now() - activity.date.getTime()) / (1000 * 60 * 60 * 24);
+        (Date.now() - activityDate.getTime()) / (1000 * 60 * 60 * 24);
       return daysSince <= 7;
     });
 
@@ -460,8 +466,10 @@ export class PoliticalTradingAnalyzer {
     isRecent: boolean;
     factor: string;
   } {
+    // Ensure trade.date is a Date object
+    const tradeDate = trade.date instanceof Date ? trade.date : new Date(trade.date);
     const daysSince =
-      (Date.now() - trade.date.getTime()) / (1000 * 60 * 60 * 24);
+      (Date.now() - tradeDate.getTime()) / (1000 * 60 * 60 * 24);
     const isRecent = daysSince <= 7;
 
     // Calculate timing weight
@@ -527,8 +535,10 @@ export class PoliticalTradingAnalyzer {
     isRecent: boolean;
     factor: string;
   } {
+    // Ensure activity.date is a Date object
+    const activityDate = activity.date instanceof Date ? activity.date : new Date(activity.date);
     const daysSince =
-      (Date.now() - activity.date.getTime()) / (1000 * 60 * 60 * 24);
+      (Date.now() - activityDate.getTime()) / (1000 * 60 * 60 * 24);
     const isRecent = daysSince <= 7;
 
     // Calculate timing weight
@@ -594,8 +604,10 @@ export class PoliticalTradingAnalyzer {
 
     // Increase confidence with recent activity
     const recentTrades = trades.filter((trade) => {
+      // Ensure trade.date is a Date object
+      const tradeDate = trade.date instanceof Date ? trade.date : new Date(trade.date);
       const daysSince =
-        (Date.now() - trade.date.getTime()) / (1000 * 60 * 60 * 24);
+        (Date.now() - tradeDate.getTime()) / (1000 * 60 * 60 * 24);
       return daysSince <= 30;
     });
 

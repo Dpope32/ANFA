@@ -390,7 +390,7 @@ export class ContinuousLearningService {
         treatment: test.treatmentMetrics.predictions,
       },
       duration: Math.ceil(
-        (test.endDate.getTime() - test.startDate.getTime()) /
+        (new Date(test.endDate).getTime() - new Date(test.startDate).getTime()) /
           (24 * 60 * 60 * 1000)
       ),
     };
