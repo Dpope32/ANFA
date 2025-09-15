@@ -39,11 +39,7 @@
 
 <style>
   .stats-panel {
-    background: white;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-    padding: 4px 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    /* Remove all container styling - just clean stats */
   }
 
   .stats-header {
