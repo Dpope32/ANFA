@@ -13,7 +13,6 @@
     "test:coverage": "jest --coverage",
     "test:connections": "ts-node scripts/test-connections.ts",
     "test:server": "ts-node scripts/test-server.ts",
-    "scanner:fast": "ts-node fast-scanner.ts",
     "test:app": "pnpm test:coverage && pnpm test:api && pnpm test:integration && pnpm test:config && pnpm lint && pnpm test:connections && pnpm test:coverage-report && pnpm test:server",
     "test:api": "jest --testPathPattern=api --coverage",
     "test:integration": "jest --testPathPattern=integration --coverage",

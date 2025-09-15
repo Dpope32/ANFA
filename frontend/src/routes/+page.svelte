@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { StockForm, ModelAccuracy } from "$lib/components";
+  import { StockForm, ModelAccuracy, PredictionDisplay } from "$lib/components";
   import type { PredictionResult } from "$lib/trpc/types";
 
   let result: PredictionResult | null = null;
@@ -44,37 +44,11 @@
   {/if}
   
   {#if result}
-    <div class="result-container">
-      <h3>Prediction Results for {result.symbol}</h3>
-      <div class="prediction-scenarios">
-        <div class="scenario">
-          <h4>Conservative Scenario</h4>
-          <p>Target Price: ${result.conservative.targetPrice.toFixed(2)}</p>
-          <p>Probability: {(result.conservative.probability * 100).toFixed(1)}%</p>
-        </div>
-        <div class="scenario">
-          <h4>Bullish Scenario</h4>
-          <p>Target Price: ${result.bullish.targetPrice.toFixed(2)}</p>
-          <p>Probability: {(result.bullish.probability * 100).toFixed(1)}%</p>
-        </div>
-        <div class="scenario">
-          <h4>Bearish Scenario</h4>
-          <p>Target Price: ${result.bearish.targetPrice.toFixed(2)}</p>
-          <p>Probability: {(result.bearish.probability * 100).toFixed(1)}%</p>
-        </div>
-      </div>
-      <div class="accuracy-info">
-        <h4>Model Accuracy</h4>
-        <p>R-squared: {result.accuracy.rSquared.toFixed(3)}</p>
-        <p>RMSE: {result.accuracy.rmse.toFixed(2)}</p>
-        <p>MAPE: {result.accuracy.mape.toFixed(2)}%</p>
-        <p>Overall Confidence: {(result.confidence * 100).toFixed(1)}%</p>
-      </div>
-      <details class="raw-data">
-        <summary>Raw Data</summary>
-        <pre>{JSON.stringify(result, null, 2)}</pre>
-      </details>
-    </div>
+    <PredictionDisplay 
+      predictionData={result} 
+      isLoading={false}
+      on:error={(e) => handleError(new Error(e.detail.message))}
+    />
   {/if}
 </div>
 
@@ -141,94 +115,6 @@
     color: #dc2626;
   }
 
-  .result-container {
-    max-width: 800px;
-    margin: 2rem auto;
-    background: white;
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e9ecef;
-  }
-
-  .result-container h3 {
-    margin: 0 0 1.5rem 0;
-    color: #1f2937;
-    font-size: 1.25rem;
-  }
-
-  .prediction-scenarios {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-
-  .scenario {
-    background: #f8f9fa;
-    border-radius: 6px;
-    padding: 1rem;
-    border: 1px solid #e9ecef;
-  }
-
-  .scenario h4 {
-    margin: 0 0 0.5rem 0;
-    color: #495057;
-    font-size: 1rem;
-  }
-
-  .scenario p {
-    margin: 0.25rem 0;
-    font-size: 0.9rem;
-    color: #6c757d;
-  }
-
-  .accuracy-info {
-    background: #f8f9fa;
-    border-radius: 6px;
-    padding: 1rem;
-    border: 1px solid #e9ecef;
-    margin-bottom: 2rem;
-  }
-
-  .accuracy-info h4 {
-    margin: 0 0 0.5rem 0;
-    color: #495057;
-  }
-
-  .accuracy-info p {
-    margin: 0.25rem 0;
-    font-size: 0.9rem;
-    color: #6c757d;
-  }
-
-  .raw-data {
-    border: 1px solid #e9ecef;
-    border-radius: 6px;
-    overflow: hidden;
-  }
-
-  .raw-data summary {
-    background: #f8f9fa;
-    padding: 1rem;
-    cursor: pointer;
-    font-weight: 500;
-    color: #495057;
-  }
-
-  .raw-data summary:hover {
-    background: #e9ecef;
-  }
-
-  .raw-data pre {
-    margin: 0;
-    padding: 1rem;
-    white-space: pre-wrap;
-    word-break: break-word;
-    background: #f8f9fa;
-    font-size: 0.8rem;
-    overflow-x: auto;
-  }
 
   @media (max-width: 768px) {
     .header-content {

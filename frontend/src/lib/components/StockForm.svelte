@@ -215,9 +215,18 @@
     font-size: 15px;
     font-weight: 400;
     color: #1f2937;
-    background: white;
+    background: white !important;
     transition: all 0.2s ease;
     box-sizing: border-box;
+  }
+
+  /* Fix browser autofill styling */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px white inset !important;
+    -webkit-text-fill-color: #1f2937 !important;
   }
 
   input::placeholder {

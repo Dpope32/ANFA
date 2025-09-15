@@ -178,16 +178,7 @@ export class PredictionService {
     let signal = 0;
     const recentTrades = politicalTrades.filter((trade) => {
       // Ensure trade.date is a Date object
-      console.log('Processing political trade:', JSON.stringify({
-        politician: trade.politician,
-        date: trade.date,
-        dateType: typeof trade.date,
-        isDate: trade.date instanceof Date
-      }, null, 2));
-      
       const tradeDate = trade.date instanceof Date ? trade.date : new Date(trade.date);
-      console.log('Converted trade date:', tradeDate, 'Type:', typeof tradeDate);
-      
       const daysSince =
         (Date.now() - tradeDate.getTime()) / (1000 * 60 * 60 * 24);
       return daysSince <= 30; // Last 30 days
