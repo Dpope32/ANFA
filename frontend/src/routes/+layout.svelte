@@ -5,7 +5,7 @@
   let { children } = $props();
   
   // Determine if we should show ModelAccuracy based on current route
-  $: showModelAccuracy = $page.url.pathname === '/predict';
+  let showModelAccuracy = $derived($page.url.pathname === '/predict');
 </script>
 
 <svelte:head>
