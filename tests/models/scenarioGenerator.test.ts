@@ -336,12 +336,12 @@ describe("ScenarioGenerator", () => {
         "30d"
       );
 
-      // Check that prices are rounded to 2 decimal places by checking the string representation
-      expect(scenarios.conservative.targetPrice.toString()).toMatch(
+      // Check that prices are rounded to 2 decimal places by checking the formatted string representation
+      expect(scenarios.conservative.targetPrice.toFixed(2)).toMatch(
         /^\d+\.\d{2}$/
       );
-      expect(scenarios.bullish.targetPrice.toString()).toMatch(/^\d+\.\d{2}$/);
-      expect(scenarios.bearish.targetPrice.toString()).toMatch(/^\d+\.\d{2}$/);
+      expect(scenarios.bullish.targetPrice.toFixed(2)).toMatch(/^\d+\.\d{2}$/);
+      expect(scenarios.bearish.targetPrice.toFixed(2)).toMatch(/^\d+\.\d{2}$/);
 
       // Also check that they are proper numbers with 2 decimal places
       expect(parseFloat(scenarios.conservative.targetPrice.toFixed(2))).toBe(

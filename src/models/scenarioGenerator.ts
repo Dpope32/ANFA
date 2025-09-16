@@ -313,7 +313,7 @@ export class ScenarioGenerator {
     );
 
     return {
-      targetPrice: parseFloat(targetPrice.toFixed(2)), // Ensure 2 decimal places
+      targetPrice: Math.round(targetPrice * 100) / 100, // Round to exactly 2 decimal places
       timeframe,
       probability: Math.round(adjustedProbability * 100) / 100,
       factors,

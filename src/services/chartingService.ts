@@ -16,6 +16,12 @@ export class ChartingService {
     try {
       const historical = stockData.marketData.prices;
       const volume = stockData.marketData.volume;
+      
+      // Validate input data
+      if (!historical || historical.length === 0) {
+        throw new Error("No historical price data available for chart generation");
+      }
+      
       const timeframeDays = this.parseTimeframe(prediction.conservative.timeframe);
       const lastPrice = historical.length > 0 ? historical[historical.length - 1]!.close : 100;
 

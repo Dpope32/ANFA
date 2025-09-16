@@ -1,216 +1,409 @@
-# Stock Price Prediction Algorithm Architecture
+# ANFA Neural Trading Intelligence System
 
-## Algorithm Overview
+## Vision
 
-Our hybrid quantitative-qualitative stock prediction algorithm combines polynomial regression with P/E ratios and qualitative market factors to predict end-of-year stock prices. The algorithm has been tested on 8 major tech stocks (TSLA, AAPL, MSFT, AMZN, GOOGL, NVDA, AMD, TSM) with strong performance metrics (R² values 0.80-0.97).
+**Building a neural network-powered trading system that's ACTUALLY accurate, unlike chatbot AI.**
 
-## Core Algorithm Components
+The key insight: We're not using some pre-trained language model to guess stocks. We're training our OWN neural networks on real market data to find patterns that actually predict price movement.
 
-### 1. Data Preprocessing
+## Core Architecture
 
-```python
-# Normalize time series: t = years since base year (e.g., 2010)
-t = years - base_year
-
-# Polygon market data preprocessing
-polygon_data = validate_polygon_data(raw_market_data)
-prices = polygon_data['adjusted_close']
-volume = polygon_data['volume']
-vwap = polygon_data['vwap']  # Volume-weighted average price
-
-# Finnhub fundamentals preprocessing
-finnhub_data = validate_finnhub_data(raw_fundamental_data)
-pe_ratios = finnhub_data['pe_ratio']
-forward_pe = finnhub_data['forward_pe']
-valid_mask = ~np.isnan(pe_ratios) & (pe_ratios > 0)
-
-# SEC API congressional data preprocessing
-sec_trades = filter_recent_congressional_trades(raw_political_data, days=90)
-political_sentiment = calculate_political_sentiment(sec_trades)
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    ANFA Neural Trading System                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌──────────────────┐    ┌─────────────────┐    ┌───────────────┐  │
+│  │  Data Pipeline   │───▶│ Neural Networks │───▶│ Prediction    │  │
+│  │                  │    │                 │    │   Engine      │  │
+│  │ • 100+ Features  │    │ • Price NN      │    │ • Ensemble    │  │
+│  │ • Normalized     │    │ • Volume NN     │    │ • Confidence  │  │
+│  │ • Time-encoded   │    │ • Pattern NN    │    │ • Scenarios   │  │
+│  │ • Contextual     │    │ • Sentiment NN  │    │ • 10-Step     │  │
+│  └──────────────────┘    └─────────────────┘    └───────────────┘  │
+│           ▲                       ▲                      │          │
+│           │                       │                      ▼          │
+│  ┌────────────────────────────────────────────┐   ┌────────────┐  │
+│  │        PocketBase Training Data            │   │  Frontend  │  │
+│  │                                            │   │            │  │
+│  │  • Historical prices & outcomes            │   │ • Workflow │  │
+│  │  • Feature → Result mappings               │   │ • Results  │  │
+│  │  • Pattern success rates                   │   │ • Metrics  │  │
+│  │  • Model performance tracking              │   │ • Charts   │  │
+│  │  • Failed predictions (for learning)       │   └────────────┘  │
+│  └────────────────────────────────────────────┘                    │
+│                                                                      │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │           Continuous Learning Loop (Fedora Server)           │  │
+│  │                                                               │  │
+│  │  • Collect data → Train models → Make predictions → Track    │  │
+│  │  • Retrain with new data every night                         │  │
+│  │  • A/B test new architectures                                │  │
+│  │  • Automatically adjust for market regime changes            │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Model Selection Logic
+## Neural Network Architecture
 
+### 1. Price Movement Network
 ```python
-if len(valid_pe_data) >= 6:
-    # Use multivariate model: price ~ t³ + t² + t + constant + P/E
-    model_type = "multivariate"
-    features = [t³, t², t, constant, pe_ratio]
-else:
-    # Fallback to cubic polynomial: price ~ t³ + t² + t + constant
-    model_type = "cubic_fallback"
-    features = [t³, t², t, constant]
+class PriceNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # Input: 50+ price-based features
+        self.layers = nn.Sequential(
+            nn.Linear(50, 128),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 3)  # [down, flat, up]
+        )
+    
+    def forward(self, x):
+        return self.layers(x)
 ```
 
-### 3. Regression Models
-
-#### Multivariate Cubic Model
-
-- **Formula:** `price = a*t³ + b*t² + c*t + d + e*PE`
-- **Method:** Ordinary Least Squares (OLS) regression
-- **Use Case:** When sufficient P/E historical data exists (≥6 points)
-- **Advantages:** Captures both temporal trends and valuation effects
-
-#### Cubic Polynomial Fallback
-
-- **Formula:** `price = a*t³ + b*t² + c*t + d`
-- **Method:** NumPy polyfit with degree=3
-- **Use Case:** When P/E data is insufficient or unreliable
-- **Advantages:** Robust to missing data, captures non-linear growth patterns
-
-### 4. Evaluation Metrics
-
-- **R² (Coefficient of Determination):** Measures explained variance (0-1, higher better)
-- **RMSE (Root Mean Square Error):** Measures prediction error (lower better)
-- **Model Selection:** Prefer multivariate if R² improvement > 0.05 over cubic
-
-### 5. Prediction Generation
-
+### 2. Volume Pattern Network
 ```python
-# For multivariate model with Finnhub P/E data
-X_future = [future_t³, future_t², future_t, 1, forward_pe_finnhub]
-predicted_price = model.predict(X_future)
-
-# Apply SEC API congressional trading adjustments
-political_adjustment = calculate_political_impact(sec_trades, symbol)
-volume_adjustment = calculate_volume_anomaly(polygon_volume_data)
-
-# Apply combined qualitative adjustments
-total_adjustment = qualitative_factor + political_adjustment + volume_adjustment
-adjusted_price = predicted_price * (1 + total_adjustment)
+class VolumeNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # LSTM for sequential volume patterns
+        self.lstm = nn.LSTM(
+            input_size=10,  # volume features
+            hidden_size=50,
+            num_layers=2,
+            batch_first=True
+        )
+        self.fc = nn.Linear(50, 3)
+    
+    def forward(self, x):
+        lstm_out, _ = self.lstm(x)
+        return self.fc(lstm_out[:, -1, :])
 ```
 
-## Qualitative Adjustment Framework
-
-### Risk Factors (Negative Adjustments)
-
-- **Political/Trade Risks:** -5% for China-exposed stocks (AAPL, NVDA, TSM, AMD)
-- **High Volatility:** -2% for stocks with implied volatility >40%
-- **Regulatory Risks:** -3% for stocks facing potential regulation
-
-### Growth Factors (Positive Adjustments)
-
-- **High Revenue Growth:** +3% for stocks with >50% YoY revenue growth
-- **Strong Institutional Ownership:** +2% for stocks with >70% institutional ownership
-- **AI/Technology Leadership:** +5% for clear AI market leaders
-
-### Market Context Factors
-
-- **Market Cap Considerations:** Large cap (>$1T) gets stability bonus +1%
-- **Sector Momentum:** Tech sector momentum adds +2% in bull markets
-- **Earnings Quality:** High-quality earnings (low P/E relative to growth) +3%
-
-## Three-Scenario Generation
-
-### Conservative Scenario
-
-- **Base:** Primary model prediction
-- **Adjustment:** Apply all negative risk factors, 50% of positive factors
-- **Probability:** 60-70% (highest likelihood)
-
-### Bullish Scenario
-
-- **Base:** Primary model prediction + 1 standard deviation
-- **Adjustment:** Apply all positive factors, minimize negative factors
-- **Probability:** 15-25% (optimistic case)
-
-### Bearish Scenario
-
-- **Base:** Primary model prediction - 1 standard deviation
-- **Adjustment:** Apply all negative factors, no positive factors
-- **Probability:** 15-25% (pessimistic case)
-
-## Algorithm Performance
-
-### Historical Validation Results
-
-| Stock | Model Type   | R²    | RMSE  | Predicted 2025 | Current Price | % Gain |
-| ----- | ------------ | ----- | ----- | -------------- | ------------- | ------ |
-| AAPL  | Multivariate | 0.976 | 11.64 | $248           | $227          | +9.3%  |
-| MSFT  | Multivariate | 0.955 | 28.11 | $491           | $501          | -1.9%  |
-| TSLA  | Cubic        | 0.796 | 65.65 | $394           | $350          | +13.3% |
-| NVDA  | Multivariate | 0.869 | 12.31 | $151           | $177          | -14.8% |
-
-### Model Strengths
-
-- **High Accuracy:** R² values consistently above 0.80 for most stocks
-- **Robust Fallback:** Cubic model handles insufficient P/E data gracefully
-- **Qualitative Integration:** Systematic incorporation of market factors
-- **Scenario Diversity:** Three distinct probability-weighted outcomes
-
-### Model Limitations
-
-- **Overfitting Risk:** Multivariate model with limited data points
-- **Forward P/E Dependency:** Requires accurate forward P/E estimates
-- **Market Regime Changes:** May not capture sudden market structure shifts
-- **Qualitative Subjectivity:** Manual adjustment factors need validation
-
-## Implementation Architecture
-
-### Core Classes
-
+### 3. Chart Pattern Recognition CNN
 ```python
-class StockPredictor:
-    def __init__(self, base_year=2010)
-    def fit(self, polygon_data: pd.DataFrame, finnhub_data: pd.DataFrame)
-    def predict(self, forward_pe: float, political_data: dict, qual_adjustments: dict)
-    def generate_scenarios(self) -> dict
-    def evaluate_model(self) -> dict
-
-class MultiSourceDataManager:
-    def __init__(self, polygon_client, finnhub_client, sec_api_client)
-    def fetch_all_data(self, symbol: str) -> CombinedStockData
-    def validate_cross_source_consistency(self, data: dict) -> bool
-    def cache_data(self, symbol: str, data: dict, ttl: int)
-
-class PoliticalTradingAnalyzer:
-    def analyze_politician_trades(self, sec_trades: list) -> dict
-    def calculate_political_sentiment(self, trades: list) -> float
-    def detect_unusual_activity(self, trades: list, insider_activity: list) -> bool
-    def apply_political_adjustments(self, base_prediction: float) -> float
-
-class QualitativeAdjuster:
-    def calculate_risk_factors(self, stock_data: dict) -> float
-    def calculate_growth_factors(self, stock_data: dict) -> float
-    def calculate_political_factors(self, political_data: dict) -> float
-    def apply_adjustments(self, base_prediction: float) -> float
+class PatternNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # CNN for chart pattern recognition
+        self.conv1 = nn.Conv1d(1, 32, kernel_size=5)
+        self.conv2 = nn.Conv1d(32, 64, kernel_size=3)
+        self.fc1 = nn.Linear(64 * 26, 128)
+        self.fc2 = nn.Linear(128, 10)  # 10 pattern types
+    
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.max_pool1d(x, 2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool1d(x, 2)
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.fc1(x))
+        return self.fc2(x)
 ```
 
-### Data Pipeline
+### 4. Sentiment Analysis Network
+```python
+class SentimentNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # For news/social sentiment
+        self.embedding = nn.Embedding(10000, 128)
+        self.lstm = nn.LSTM(128, 256, batch_first=True)
+        self.fc = nn.Linear(256, 3)  # bearish, neutral, bullish
+    
+    def forward(self, x):
+        x = self.embedding(x)
+        lstm_out, _ = self.lstm(x)
+        return self.fc(lstm_out[:, -1, :])
+```
 
-1. **Multi-Source Data Ingestion:**
+### 5. Ensemble Meta-Network
+```python
+class EnsembleNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        # Combines all network outputs
+        self.meta = nn.Sequential(
+            nn.Linear(19, 64),  # All network outputs
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 3)  # Final prediction
+        )
+    
+    def forward(self, price_out, volume_out, pattern_out, sentiment_out):
+        combined = torch.cat([price_out, volume_out, pattern_out, sentiment_out], dim=1)
+        return self.meta(combined)
+```
 
-   - Polygon: Historical prices, volume, VWAP, real-time data
-   - Finnhub: P/E ratios, forward P/E, earnings, financial metrics
-   - SEC API: Congressional trades, insider activity via Form 4 filings
+## The 10-Step Neural Workflow
 
-2. **Cross-Source Data Validation:**
+### Step 1: Time Context Encoding
+```python
+def encode_time_context(timestamp):
+    features = {
+        'hour': timestamp.hour / 24,
+        'day_of_week': timestamp.weekday() / 7,
+        'day_of_month': timestamp.day / 31,
+        'month': timestamp.month / 12,
+        'is_market_hours': 1 if 9.5 <= timestamp.hour <= 16 else 0,
+        'minutes_from_open': (timestamp.hour * 60 + timestamp.minute - 570) / 390,
+        'is_opex': 1 if is_options_expiry(timestamp) else 0,
+        'days_to_earnings': days_until_earnings(timestamp) / 90
+    }
+    return torch.tensor(list(features.values()))
+```
 
-   - Filter invalid/anomalous data points per source
-   - Validate price consistency between sources when possible
-   - Handle rate limiting and API failures gracefully
+### Step 2: Feature Engineering
+```python
+def engineer_features(data):
+    features = []
+    
+    # Price features
+    features.extend([
+        data['rsi'] / 100,
+        data['macd_signal'],
+        (data['price'] - data['sma_20']) / data['sma_20'],
+        (data['price'] - data['sma_50']) / data['sma_50'],
+        data['bollinger_position'],
+        data['atr'] / data['price']
+    ])
+    
+    # Volume features
+    features.extend([
+        data['volume'] / data['avg_volume'],
+        data['buy_volume'] / data['total_volume'],
+        data['large_trades'] / data['total_trades']
+    ])
+    
+    # Options features
+    features.extend([
+        data['put_call_ratio'],
+        data['iv_rank'] / 100,
+        data['gamma_exposure'] / 1e9
+    ])
+    
+    return torch.tensor(features)
+```
 
-3. **Enhanced Model Training:**
+### Step 3: Run Price Network
+```python
+price_features = extract_price_features(stock_data)
+price_prediction = price_net(price_features)
+# Output: [0.2, 0.3, 0.5] - 50% chance of up move
+```
 
-   - Fit multivariate model with Polygon prices + Finnhub fundamentals
-   - Incorporate volume-weighted metrics from Polygon
-   - Fall back to cubic model based on data availability
+### Step 4: Run Volume Network
+```python
+volume_sequence = extract_volume_sequence(stock_data, lookback=20)
+volume_prediction = volume_net(volume_sequence)
+# Output: [0.1, 0.2, 0.7] - 70% chance volume indicates up
+```
 
-4. **Multi-Factor Prediction:**
+### Step 5: Run Pattern Recognition
+```python
+chart_data = normalize_chart_data(stock_data, window=100)
+pattern = pattern_net(chart_data)
+# Output: [0.8, 0.1, ...] - 80% confidence it's pattern type 0 (bull flag)
+```
 
-   - Generate base prediction using fitted model
-   - Apply SEC API congressional trading intelligence
-   - Factor in insider activity from Form 4 filings
+### Step 6: Run Sentiment Analysis
+```python
+news_data = fetch_recent_news(symbol)
+sentiment = sentiment_net(tokenize(news_data))
+# Output: [0.15, 0.35, 0.50] - 50% bullish sentiment
+```
 
-5. **Comprehensive Adjustment:**
+### Step 7: Ensemble Prediction
+```python
+ensemble_input = combine_network_outputs(
+    price_prediction,
+    volume_prediction, 
+    pattern,
+    sentiment
+)
+final_prediction = ensemble_net(ensemble_input)
+confidence = torch.max(final_prediction).item()
+```
 
-   - Apply traditional qualitative factors
-   - Add political sentiment adjustments
-   - Include volume anomaly detection
+### Step 8: Generate Scenarios
+```python
+def generate_scenarios(prediction, confidence):
+    base_move = prediction_to_percent(prediction)
+    
+    return {
+        'conservative': {
+            'target': current_price * (1 + base_move * 0.5),
+            'confidence': confidence * 0.8,
+            'stop_loss': current_price * 0.98
+        },
+        'expected': {
+            'target': current_price * (1 + base_move),
+            'confidence': confidence,
+            'stop_loss': current_price * 0.97
+        },
+        'aggressive': {
+            'target': current_price * (1 + base_move * 1.5),
+            'confidence': confidence * 0.6,
+            'stop_loss': current_price * 0.96
+        }
+    }
+```
 
-6. **Enhanced Output:**
-   - Return three scenarios with confidence metrics
-   - Include data source attribution and freshness
-   - Provide congressional trading context and insider activity summary
+### Step 9: Calculate Risk/Reward
+```python
+def calculate_risk_metrics(scenarios):
+    for scenario in scenarios.values():
+        reward = scenario['target'] - current_price
+        risk = current_price - scenario['stop_loss']
+        scenario['risk_reward'] = reward / risk
+        scenario['kelly_fraction'] = calculate_kelly(
+            scenario['confidence'],
+            scenario['risk_reward']
+        )
+```
 
-This architecture provides a systematic, testable approach to stock price prediction that balances quantitative rigor with qualitative market insights.
+### Step 10: Explain Decision
+```python
+def explain_prediction(networks_outputs, final_prediction):
+    explanation = {
+        'primary_driver': get_strongest_signal(networks_outputs),
+        'supporting_factors': get_supporting_signals(networks_outputs),
+        'conflicting_signals': get_conflicting_signals(networks_outputs),
+        'confidence_breakdown': {
+            'price_confidence': torch.max(price_prediction).item(),
+            'volume_confidence': torch.max(volume_prediction).item(),
+            'pattern_confidence': torch.max(pattern).item(),
+            'sentiment_confidence': torch.max(sentiment).item()
+        },
+        'similar_setups': find_similar_historical(features),
+        'backtest_performance': test_on_similar_setups(features)
+    }
+    return explanation
+```
+
+## Training Pipeline
+
+### Data Collection (PocketBase + Fedora)
+```python
+# Continuous data collection
+async def collect_training_data():
+    while True:
+        data = await fetch_market_data()
+        features = engineer_features(data)
+        
+        # Store in PocketBase for training
+        pb.collection('training_data').create({
+            'timestamp': datetime.now(),
+            'symbol': symbol,
+            'features': features.tolist(),
+            'price_before': data['price'],
+            'price_after': None  # Updated later
+        })
+        
+        await asyncio.sleep(300)  # Every 5 minutes
+```
+
+### Nightly Retraining
+```python
+def retrain_networks():
+    # Pull data from PocketBase
+    training_data = pb.collection('training_data').get_list(
+        filter='price_after != null'
+    )
+    
+    # Prepare datasets
+    X, y = prepare_training_data(training_data)
+    train_loader = DataLoader(
+        TensorDataset(X, y),
+        batch_size=32,
+        shuffle=True
+    )
+    
+    # Train each network
+    for epoch in range(100):
+        for batch_x, batch_y in train_loader:
+            # Price network
+            price_optimizer.zero_grad()
+            price_loss = criterion(price_net(batch_x[:, :50]), batch_y)
+            price_loss.backward()
+            price_optimizer.step()
+            
+            # Similar for other networks...
+    
+    # Save models
+    torch.save(price_net.state_dict(), 'price_net.pth')
+    # etc...
+```
+
+## Why Neural Networks + Systematic Testing
+
+1. **Pattern Recognition**: Neural networks excel at finding complex patterns
+2. **Non-linear Relationships**: Markets aren't linear - NNs capture that
+3. **Feature Learning**: Networks learn which features matter automatically
+4. **Ensemble Power**: Multiple specialized networks > one general network
+5. **Continuous Learning**: Retrain nightly with new data
+6. **Explainable**: We can see what each network contributes
+
+## PocketBase Schema
+
+```sql
+-- Training data
+training_data {
+  id: string;
+  timestamp: datetime;
+  symbol: string;
+  features: json;  -- All engineered features
+  price_before: number;
+  price_after_5m: number;
+  price_after_1h: number;
+  price_after_1d: number;
+  volume_profile: json;
+  pattern_detected: string;
+}
+
+-- Model performance
+model_performance {
+  id: string;
+  model_name: string;
+  version: string;
+  training_date: datetime;
+  validation_loss: number;
+  test_accuracy: number;
+  live_accuracy: number;
+  parameters: json;
+}
+
+-- Predictions
+predictions {
+  id: string;
+  timestamp: datetime;
+  symbol: string;
+  networks_outputs: json;
+  ensemble_prediction: json;
+  scenarios: json;
+  actual_outcome: json;
+  accuracy: number;
+}
+```
+
+## This is What You Actually Wanted
+
+Neural networks that:
+- Learn from real data, not pre-trained BS
+- Specialize in different aspects (price, volume, patterns)
+- Work together through ensemble
+- Continuously improve through retraining
+- Run on your Fedora server with PocketBase
+- Give you the 10-step workflow you described
+
+Not some chatbot trying to predict stocks, but actual neural networks trained on actual market data.
