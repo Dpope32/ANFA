@@ -60,14 +60,42 @@ export class FinnhubClient {
       const profile = profileResponse.data;
       const metrics = metricsResponse.data;
 
+      console.log(`🔍 [FINNHUB DEBUG] Raw API responses for ${symbol}:`);
+      console.log(`   📊 Profile keys:`, Object.keys(profile || {}));
+      console.log(`   💹 Metrics keys:`, Object.keys(metrics || {}));
+      console.log(`   📈 Market Cap from profile:`, profile?.marketCapitalization);
+      console.log(`   💰 P/E from metrics:`, metrics?.peBasicExclExtraTTM);
+      
+      // Let's see what PE-related fields actually exist in metrics
+      if (metrics) {
+        const peFields = Object.keys(metrics).filter(key => key.toLowerCase().includes('pe') || key.toLowerCase().includes('ratio'));
+        console.log(`   🔍 Available PE/Ratio fields:`, peFields);
+        
+        // Check for common field patterns
+        const commonFields = ['pe', 'peRatio', 'priceEarningsRatio', 'forwardPE', 'marketCap', 'marketCapitalization', 'eps', 'earningsPerShare'];
+        commonFields.forEach(field => {
+          if (metrics[field] !== undefined) {
+            console.log(`   ✅ Found ${field}:`, metrics[field]);
+          }
+        });
+      }
+      
+      // Also check what actual data structure we get
+      if (metrics?.metric) {
+        console.log(`   📊 Metrics.metric keys:`, Object.keys(metrics.metric || {}));
+      }
+      if (metrics?.series) {
+        console.log(`   📊 Metrics.series keys:`, Object.keys(metrics.series || {}));
+      }
+
       const fundamentalData: FundamentalData = {
         symbol: symbol.toUpperCase(),
-        peRatio: metrics.peBasicExclExtraTTM || 0,
-        forwardPE: metrics.peExclExtraAnnual || 0,
-        marketCap: profile.marketCapitalization || 0,
-        eps: metrics.epsBasicExclExtraAnnual || 0,
-        revenue: metrics.revenuePerShareTTM || 0,
-        revenueGrowth: metrics.revenueGrowthTTM || 0,
+        peRatio: metrics?.peBasicExclExtraTTM || 0,
+        forwardPE: metrics?.peExclExtraAnnual || 0,
+        marketCap: profile?.marketCapitalization || 0,
+        eps: metrics?.epsBasicExclExtraAnnual || 0,
+        revenue: metrics?.revenuePerShareTTM || 0,
+        revenueGrowth: metrics?.revenueGrowthTTM || 0,
         timestamp: new Date(),
         source: "finnhub",
       };

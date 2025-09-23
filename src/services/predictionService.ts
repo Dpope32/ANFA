@@ -30,18 +30,45 @@ export class PredictionService {
     stockData: StockData,
     timeframe: string = "30d"
   ): Promise<PredictionResult> {
+    console.log(`🧠 [PREDICTION SERVICE] Starting prediction for ${stockData.symbol}`);
+    
     try {
       // Extract features for prediction
+      console.log(`🔧 [FEATURE EXTRACTION] Extracting features from stock data...`);
       const features = this.extractFeatures(stockData);
 
+      console.log(`📊 [FEATURES] Available features:`);
+      console.log(`   💰 Prices: ${features.prices.length} data points`);
+      console.log(`   📈 Volume: ${features.volume?.length || 0} data points`);
+      console.log(`   📈 PE Ratio: ${features.peRatio || "N/A"}`);
+      console.log(`   💼 Market Cap: $${features.marketCap ? (features.marketCap / 1e9).toFixed(2) + "B" : "N/A"}`);
+      console.log(`   📈 Revenue Growth: ${features.revenueGrowth ? (features.revenueGrowth * 100).toFixed(1) + "%" : "N/A"}`);
+      console.log(`   🏛️ Political Signal: ${features.politicalSignal?.toFixed(4) || "N/A"}`);
+      console.log(`   👤 Insider Signal: ${features.insiderSignal?.toFixed(4) || "N/A"}`);
+      console.log(`   📊 Options Signal: ${features.optionsSignal?.toFixed(4) || "N/A"}`);
+
       // Fit the polynomial regression model
+      console.log(`🤖 [MODEL TRAINING] Training polynomial regression model...`);
       const model = await this.polynomialRegression.fit(features);
 
+      console.log(`✅ [MODEL TRAINED] Model performance:`);
+      console.log(`   🎯 R²: ${model.rSquared.toFixed(4)} (${(model.rSquared * 100).toFixed(1)}% variance explained)`);
+      console.log(`   📏 RMSE: ${model.rmse.toFixed(4)}`);
+      console.log(`   🔢 Polynomial Degree: ${model.degree}`);
+      console.log(`   📚 Training Data Size: ${model.trainingSize} points`);
+      console.log(`   💰 Last Price: $${model.lastPrice.toFixed(2)}`);
+      console.log(`   🏷️ Features Used: ${model.features.join(", ")}`);
+
       // Generate base prediction
+      console.log(`🔮 [BASE PREDICTION] Generating predictions for ${timeframe}...`);
       const predictions = await this.polynomialRegression.predict(
         model,
         timeframe
       );
+
+      console.log(`📈 [RAW PREDICTIONS] Generated ${predictions.length} prediction points:`);
+      console.log(`   🎯 Final Target: $${(predictions[predictions.length - 1] || 0).toFixed(2)}`);
+      console.log(`   📊 Price Change: ${((((predictions[predictions.length - 1] || 0) - model.lastPrice) / model.lastPrice) * 100).toFixed(2)}%`);
 
       // Convert to BasePrediction format
       const basePrediction = {
@@ -59,24 +86,38 @@ export class PredictionService {
       };
 
       // Analyze political and insider trading signals
+      console.log(`🏛️ [POLITICAL ANALYSIS] Analyzing political sentiment...`);
       const politicalAnalysis =
         politicalTradingAnalyzer.analyzePoliticalSentiment(
           stockData.politicalTrades || [],
           stockData.symbol
         );
 
+      console.log(`👤 [INSIDER ANALYSIS] Analyzing insider sentiment...`);
       const insiderAnalysis = politicalTradingAnalyzer.analyzeInsiderSentiment(
         stockData.insiderActivity || [],
         stockData.symbol
       );
 
+      console.log(`🎯 [SENTIMENT RESULTS]:`);
+      console.log(`   🏛️ Political Sentiment: ${politicalAnalysis.sentiment} (confidence: ${politicalAnalysis.confidence.toFixed(3)}, impact: ${politicalAnalysis.impactScore.toFixed(3)})`);
+      console.log(`   👤 Insider Sentiment: ${insiderAnalysis.sentiment} (confidence: ${insiderAnalysis.confidence.toFixed(3)}, impact: ${insiderAnalysis.impactScore.toFixed(3)})`);
+
       // Apply political and insider adjustments to base prediction
+      console.log(`⚖️ [ADJUSTMENTS] Applying political and insider adjustments...`);
       const adjustments =
         politicalTradingAnalyzer.applyPoliticalAndInsiderAdjustments(
           basePrediction.targetPrice,
           politicalAnalysis,
           insiderAnalysis
         );
+
+      console.log(`📊 [ADJUSTMENTS APPLIED]:`);
+      console.log(`   💰 Original Target: $${basePrediction.targetPrice.toFixed(2)}`);
+      console.log(`   💰 Adjusted Target: $${adjustments.adjustedPrediction.toFixed(2)}`);
+      console.log(`   📈 Price Impact: ${((adjustments.adjustedPrediction - basePrediction.targetPrice) / basePrediction.targetPrice * 100).toFixed(2)}%`);
+      console.log(`   🎯 Confidence Impact: ${(adjustments.confidenceImpact * 100).toFixed(1)}%`);
+      console.log(`   🏷️ Adjustment Factors: ${adjustments.factors.join(", ")}`);
 
       // Update base prediction with adjustments
       const adjustedBasePrediction = {
@@ -86,13 +127,20 @@ export class PredictionService {
       };
 
       // Generate three scenarios with adjusted prediction
+      console.log(`🎭 [SCENARIOS] Generating bullish, bearish, and conservative scenarios...`);
       const scenarios = await this.scenarioGenerator.generateScenarios(
         adjustedBasePrediction,
         stockData,
         timeframe
       );
 
+      console.log(`📊 [SCENARIO RESULTS]:`);
+      console.log(`   🚀 Bullish: $${scenarios.bullish.targetPrice.toFixed(2)} (${((scenarios.bullish.targetPrice - model.lastPrice) / model.lastPrice * 100).toFixed(2)}%)`);
+      console.log(`   ⚖️ Conservative: $${scenarios.conservative.targetPrice.toFixed(2)} (${((scenarios.conservative.targetPrice - model.lastPrice) / model.lastPrice * 100).toFixed(2)}%)`);
+      console.log(`   📉 Bearish: $${scenarios.bearish.targetPrice.toFixed(2)} (${((scenarios.bearish.targetPrice - model.lastPrice) / model.lastPrice * 100).toFixed(2)}%)`);
+
       // Calculate overall confidence with political/insider impact
+      console.log(`🎯 [CONFIDENCE] Calculating prediction confidence...`);
       const baseConfidence = this.calculateConfidence(
         scenarios.accuracyMetrics,
         stockData
@@ -101,6 +149,11 @@ export class PredictionService {
         1,
         baseConfidence + adjustments.confidenceImpact
       );
+
+      console.log(`📊 [CONFIDENCE BREAKDOWN]:`);
+      console.log(`   📈 Base Confidence: ${(baseConfidence * 100).toFixed(1)}%`);
+      console.log(`   ⚖️ Adjustment Impact: ${(adjustments.confidenceImpact * 100).toFixed(1)}%`);
+      console.log(`   🎯 Final Confidence: ${(confidence * 100).toFixed(1)}%`);
 
       const predictionResult = {
         symbol: stockData.symbol,
@@ -112,11 +165,19 @@ export class PredictionService {
         timestamp: new Date(),
       };
 
+      console.log(`🎓 [CONTINUOUS LEARNING] Processing prediction through learning pipeline...`);
+      
       // Process through continuous learning pipeline
       await continuousLearningService.processPrediction(
         stockData,
         predictionResult
       );
+
+      console.log(`✅ [PREDICTION COMPLETE] Final result for ${stockData.symbol}:`);
+      console.log(`   📊 Timeframe: ${timeframe}`);
+      console.log(`   🎯 Confidence: ${(predictionResult.confidence * 100).toFixed(1)}%`);
+      console.log(`   📈 Accuracy Metrics: R²=${predictionResult.accuracy.rSquared.toFixed(3)}, RMSE=${predictionResult.accuracy.rmse.toFixed(4)}, MAPE=${predictionResult.accuracy.mape.toFixed(2)}%`);
+      console.log(`   ⏰ Generated at: ${predictionResult.timestamp}`);
 
       return predictionResult;
     } catch (error) {

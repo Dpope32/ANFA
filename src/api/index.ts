@@ -76,17 +76,45 @@ export class ApiServer {
       "/api/predict",
       this.validatePredictionRequest,
       async (req: Request, res: Response, next: NextFunction) => {
+        const startTime = Date.now();
+        const currentDate = new Date();
+        
         try {
           const { symbol, timeframe = "30d" } = req.body;
+          
+          console.log(`🚀 [PREDICTION START] ${currentDate.toISOString()}`);
+          console.log(`📊 Symbol: ${symbol} | Timeframe: ${timeframe}`);
 
           // Get stock data
+          console.log(`📡 Fetching stock data for ${symbol}...`);
           const stockData = await this.dataService.getStockData(symbol);
+          
+          // Log current stock price and data quality
+          const currentPrice = stockData.marketData.prices[stockData.marketData.prices.length - 1]?.close || 0;
+          console.log(`💰 Current Stock Price: $${currentPrice.toFixed(2)}`);
+          console.log(`📈 Price Data Points: ${stockData.marketData.prices.length}`);
+          console.log(`🔢 Volume Data Points: ${stockData.marketData.volume.length}`);
+          console.log(`🏛️ Political Trades: ${stockData.politicalTrades?.length || 0}`);
+          console.log(`👤 Insider Activities: ${stockData.insiderActivity?.length || 0}`);
 
           // Generate prediction
+          console.log(`🧠 Generating prediction for ${symbol}...`);
           const prediction = await this.predictionService.predict(stockData, timeframe);
 
+          console.log(`🎯 PREDICTION RESULTS:`);
+          console.log(`   Conservative: $${prediction.conservative.targetPrice.toFixed(2)} (${((prediction.conservative.targetPrice - currentPrice) / currentPrice * 100).toFixed(2)}%)`);
+          console.log(`   Bullish: $${prediction.bullish.targetPrice.toFixed(2)} (${((prediction.bullish.targetPrice - currentPrice) / currentPrice * 100).toFixed(2)}%)`);
+          console.log(`   Bearish: $${prediction.bearish.targetPrice.toFixed(2)} (${((prediction.bearish.targetPrice - currentPrice) / currentPrice * 100).toFixed(2)}%)`);
+          console.log(`   Confidence: ${(prediction.confidence * 100).toFixed(1)}%`);
+          console.log(`   R²: ${prediction.accuracy.rSquared.toFixed(3)} | RMSE: ${prediction.accuracy.rmse.toFixed(4)} | MAPE: ${prediction.accuracy.mape.toFixed(2)}%`);
+
           // Generate complete chart data (includes all visualizations)
+          console.log(`📊 Generating chart data for ${symbol}...`);
           const chartData = await this.chartingService.generateChartData(stockData, prediction);
+
+          const processingTime = Date.now() - startTime;
+          console.log(`✅ [PREDICTION COMPLETE] Total processing time: ${processingTime}ms`);
+          console.log(`─────────────────────────────────────────────────────────────\n`);
 
           res.json({
             success: true,
@@ -98,6 +126,8 @@ export class ApiServer {
                 timeframe,
                 generatedAt: new Date().toISOString(),
                 dataSources: this.getDataSources(stockData),
+                processingTimeMs: processingTime,
+                currentPrice,
               },
             },
           });

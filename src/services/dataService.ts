@@ -28,11 +28,16 @@ export class DataService {
    * Get comprehensive stock data from all available sources
    */
   async getStockData(symbol: string): Promise<StockData> {
+    console.log(`🔍 [DATA SERVICE] Fetching data for ${symbol}`);
     const cacheKey = cacheService.generateKey("polygon", symbol, "stockData");
 
     // Try cache first
     const cached = await cacheService.get<StockData>(cacheKey);
     if (cached) {
+      console.log(`⚡ [CACHE HIT] Using cached data for ${symbol}`);
+      const currentPrice = cached.marketData.prices[cached.marketData.prices.length - 1]?.close || 0;
+      console.log(`💰 [CACHED] Current Price: $${currentPrice.toFixed(2)} (from ${cached.timestamp})`);
+      
       // Ensure timestamp is a Date object (it gets serialized as string in cache)
       return {
         ...cached,
@@ -40,6 +45,8 @@ export class DataService {
       };
     }
 
+    console.log(`🌐 [CACHE MISS] Fetching fresh data for ${symbol} from all sources...`);
+    
     try {
       // Fetch data from all sources in parallel
       const [marketData, fundamentals, politicalTrades, insiderActivity] =
@@ -49,6 +56,40 @@ export class DataService {
           this.getPoliticalTrades(symbol),
           this.getInsiderActivity(symbol),
         ]);
+
+      // Log data source results
+      console.log(`📈 [POLYGON] Market Data: ${marketData.status === "fulfilled" ? "✅ Success" : "❌ Failed"}`);
+      if (marketData.status === "fulfilled") {
+        const prices = marketData.value.prices;
+        const latestPrice = prices[prices.length - 1]?.close || 0;
+        console.log(`   📊 ${prices.length} price points, Latest: $${latestPrice.toFixed(2)} (${prices[prices.length - 1]?.date})`);
+        console.log(`   📦 ${marketData.value.volume.length} volume points`);
+      } else {
+        console.log(`   ❌ Error: ${marketData.reason}`);
+      }
+
+      console.log(`🏢 [FINNHUB] Fundamentals: ${fundamentals.status === "fulfilled" ? "✅ Success" : "❌ Failed"}`);
+      if (fundamentals.status === "fulfilled") {
+        const fund = fundamentals.value;
+        console.log(`   💹 P/E: ${fund.peRatio}, Market Cap: $${(fund.marketCap / 1e9).toFixed(2)}B, EPS: $${fund.eps.toFixed(2)}`);
+        console.log(`   📈 Revenue Growth: ${(fund.revenueGrowth * 100).toFixed(1)}%`);
+      } else {
+        console.log(`   ❌ Error: ${fundamentals.reason}`);
+      }
+
+      console.log(`🏛️ [SEC API] Political Trades: ${politicalTrades.status === "fulfilled" ? "✅ Success" : "❌ Failed"}`);
+      if (politicalTrades.status === "fulfilled") {
+        console.log(`   📊 ${politicalTrades.value.length} political trades found`);
+      } else {
+        console.log(`   ❌ Error: ${politicalTrades.reason}`);
+      }
+
+      console.log(`👤 [SEC API] Insider Activity: ${insiderActivity.status === "fulfilled" ? "✅ Success" : "❌ Failed"}`);
+      if (insiderActivity.status === "fulfilled") {
+        console.log(`   📊 ${insiderActivity.value.length} insider activities found`);
+      } else {
+        console.log(`   ❌ Error: ${insiderActivity.reason}`);
+      }
 
       const stockData: StockData = {
         symbol: symbol.toUpperCase(),
@@ -70,6 +111,7 @@ export class DataService {
 
       // Cache the result for 5 minutes
       await cacheService.set(cacheKey, stockData, 300);
+      console.log(`💾 [CACHE] Stored data for ${symbol} (5min expiry)`);
 
       return stockData;
     } catch (error) {

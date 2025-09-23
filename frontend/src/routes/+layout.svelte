@@ -19,6 +19,7 @@
       <nav class="nav-links">
         <a href="/" class:active={$page.url.pathname === '/'}>Dashboard</a>
         <a href="/predict" class:active={$page.url.pathname === '/predict'}>Predict</a>
+        <a href="/research" class:active={$page.url.pathname === '/research'}>Research</a>
       </nav>
     </div>
     {#if showModelAccuracy}
@@ -59,9 +60,9 @@
   }
 
   .header-content {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 0.75rem 2rem;
+    width: 100%;
+    margin: 0;
+    padding: 0.75rem 2rem 0.75rem 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -99,6 +100,7 @@
     padding: 0.5rem 0.75rem;
     border-radius: 6px;
     transition: all 0.2s;
+    white-space: nowrap;
   }
 
   .nav-links a:hover {

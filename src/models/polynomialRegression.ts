@@ -42,38 +42,56 @@ export class PolynomialRegression {
    * Automatically selects best degree and features based on available data
    */
   async fit(features: RegressionFeatures): Promise<PolynomialModel> {
+    console.log(`🏗️ [POLYNOMIAL MODEL] Starting model training...`);
+    
     if (!features.prices || features.prices.length < this.minDataPoints) {
-      throw new Error(
-        `Insufficient data: need at least ${
+      const errorMsg = `Insufficient data: need at least ${
           this.minDataPoints
-        } price points, got ${features.prices?.length || 0}`
-      );
+        } price points, got ${features.prices?.length || 0}`;
+      console.log(`❌ [MODEL ERROR] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
+
+    console.log(`📊 [DATA VALIDATION] Input data validated: ${features.prices.length} price points`);
 
     // Determine available features and model complexity
     const availableFeatures = this.determineAvailableFeatures(features);
+    console.log(`🔧 [FEATURE SELECTION] Available features: ${availableFeatures.join(", ")}`);
 
     // Prepare training data
+    console.log(`⚙️ [DATA PREPARATION] Preprocessing training data...`);
     const { X, y, scales } = this.prepareTrainingData(
       features,
       availableFeatures
     );
 
     if (X.length === 0 || y.length === 0) {
-      throw new Error("No valid training data after preprocessing");
+      const errorMsg = "No valid training data after preprocessing";
+      console.log(`❌ [PREPROCESSING ERROR] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
 
+    console.log(`✅ [PREPROCESSING COMPLETE] Training matrix: ${X.length}x${X[0]?.length || 0}, Target vector: ${y.length}`);
+
     // Find optimal polynomial degree
+    console.log(`🔍 [DEGREE OPTIMIZATION] Finding optimal polynomial degree...`);
     const optimalDegree = await this.findOptimalDegree(X, y);
+    console.log(`🎯 [OPTIMAL DEGREE] Selected degree ${optimalDegree} (max: ${this.maxDegree})`);
 
     // Train final model
+    console.log(`🎯 [MODEL TRAINING] Training final polynomial model with degree ${optimalDegree}...`);
     const { coefficients, intercept } = this.trainPolynomial(
       X,
       y,
       optimalDegree
     );
 
+    console.log(`📊 [MODEL COEFFICIENTS] Trained coefficients:`);
+    console.log(`   🔢 Intercept: ${intercept.toFixed(6)}`);
+    console.log(`   📈 Coefficients: [${coefficients.slice(0, 5).map(c => c.toFixed(6)).join(", ")}${coefficients.length > 5 ? `... +${coefficients.length - 5} more` : ""}]`);
+
     // Calculate model performance
+    console.log(`📏 [PERFORMANCE EVALUATION] Evaluating model performance...`);
     const predictions = this.predictWithCoefficients(
       X,
       coefficients,
@@ -81,6 +99,13 @@ export class PolynomialRegression {
       optimalDegree
     );
     const { rSquared, rmse } = this.calculateMetrics(y, predictions);
+
+    console.log(`✅ [MODEL PERFORMANCE]:`);
+    console.log(`   🎯 R²: ${rSquared.toFixed(4)} (${(rSquared * 100).toFixed(1)}% variance explained)`);
+    console.log(`   📏 RMSE: ${rmse.toFixed(6)}`);
+
+    const lastPrice = features.prices[features.prices.length - 1] || 0;
+    console.log(`💰 [BASELINE] Last known price: $${lastPrice.toFixed(2)}`);
 
     return {
       coefficients,
@@ -90,7 +115,7 @@ export class PolynomialRegression {
       rSquared,
       rmse,
       trainingSize: features.prices.length,
-      lastPrice: features.prices[features.prices.length - 1] || 0,
+      lastPrice,
       priceScale: scales.priceScale,
       featureScales: scales.featureScales,
     };
@@ -101,13 +126,25 @@ export class PolynomialRegression {
    */
   async predict(model: PolynomialModel, timeframe: string): Promise<number[]> {
     const days = this.parseTimeframe(timeframe);
+    console.log(`🔮 [PREDICTION GENERATION] Generating predictions for ${days} days (${timeframe})`);
+    console.log(`📊 [MODEL INFO] Using degree ${model.degree} polynomial with ${model.features.length} features`);
+    
     const predictions: number[] = [];
 
     // Generate predictions for each day
     for (let day = 1; day <= days; day++) {
       const prediction = this.predictSinglePoint(model, day);
       predictions.push(prediction);
+      
+      if (day <= 5 || day % 7 === 0 || day === days) {
+        const changeFromBaseline = ((prediction - model.lastPrice) / model.lastPrice) * 100;
+        console.log(`   Day ${day}: $${prediction.toFixed(2)} (${changeFromBaseline >= 0 ? '+' : ''}${changeFromBaseline.toFixed(2)}%)`);
+      }
     }
+
+    const finalPrediction = predictions[predictions.length - 1] || 0;
+    const totalChange = ((finalPrediction - model.lastPrice) / model.lastPrice) * 100;
+    console.log(`🎯 [FINAL PREDICTION] ${timeframe} target: $${finalPrediction.toFixed(2)} (${totalChange >= 0 ? '+' : ''}${totalChange.toFixed(2)}% from $${model.lastPrice.toFixed(2)})`);
 
     return predictions;
   }
@@ -208,6 +245,16 @@ export class PolynomialRegression {
         const priceChange = (nextPrice - currentPrice) / currentPrice;
         y.push(priceChange);
       }
+    }
+
+    console.log(`🎯 [TRAINING DATA DEBUG] Target variable (price changes):`);
+    console.log(`   📊 Price changes range: ${Math.min(...y).toFixed(6)} to ${Math.max(...y).toFixed(6)}`);
+    console.log(`   📈 Mean price change: ${(y.reduce((a, b) => a + b, 0) / y.length).toFixed(6)}`);
+    console.log(`   📊 Standard deviation: ${Math.sqrt(y.reduce((sum, val) => sum + Math.pow(val - (y.reduce((a, b) => a + b, 0) / y.length), 2), 0) / y.length).toFixed(6)}`);
+    console.log(`   🔢 Valid price changes: ${y.length} out of ${n-1} possible`);
+
+    if (Math.abs(y.reduce((a, b) => a + b, 0) / y.length) > 0.5) {
+      console.warn(`⚠️ [WARNING] Extreme average price change detected: ${((y.reduce((a, b) => a + b, 0) / y.length) * 100).toFixed(2)}% - data may be corrupted`);
     }
 
     // Prepare feature matrix
@@ -600,14 +647,20 @@ export class PolynomialRegression {
       }
     }
 
+    console.log(`🔧 [FEATURE DEBUG] Day ${daysAhead} raw features:`, features);
+
     // Normalize features
     const normalizedFeatures = features.map((value, i) => {
       const scale = model.featureScales[`feature_${i}`];
       if (scale) {
-        return (value - scale.mean) / Math.max(scale.std, 1e-8);
+        const normalized = (value - scale.mean) / Math.max(scale.std, 1e-8);
+        console.log(`   Feature ${i}: ${value} -> ${normalized.toFixed(6)} (mean: ${scale.mean.toFixed(6)}, std: ${scale.std.toFixed(6)})`);
+        return normalized;
       }
       return value;
     });
+
+    console.log(`⚡ [NORMALIZED DEBUG] Normalized features:`, normalizedFeatures.map(f => f.toFixed(6)));
 
     // Create polynomial features
     const polyFeatures = this.createPolynomialFeatures(
@@ -619,6 +672,10 @@ export class PolynomialRegression {
       return model.lastPrice;
     }
 
+    console.log(`🔢 [POLYNOMIAL DEBUG] Poly features (first 10):`, polyFeatures.slice(0, 10).map(f => f.toFixed(6)));
+    console.log(`🎯 [COEFFICIENTS DEBUG] Model coefficients (first 10):`, model.coefficients.slice(0, 10).map(c => c.toFixed(6)));
+    console.log(`🔢 [INTERCEPT DEBUG] Model intercept:`, model.intercept.toFixed(6));
+
     // Calculate prediction
     let prediction = model.intercept;
     for (
@@ -628,15 +685,41 @@ export class PolynomialRegression {
     ) {
       const coeff = model.coefficients[i] || 0;
       const feature = polyFeatures[i] || 0;
-      prediction += coeff * feature;
+      const contribution = coeff * feature;
+      prediction += contribution;
+      
+      if (Math.abs(contribution) > 1) {
+        console.log(`⚠️ [LARGE CONTRIBUTION] Feature ${i}: ${feature.toFixed(6)} * ${coeff.toFixed(6)} = ${contribution.toFixed(6)}`);
+      }
+    }
+
+    console.log(`📊 [PREDICTION COMPONENTS] Total contributions: ${(prediction - model.intercept).toFixed(6)}`);
+
+    // If prediction is completely unreasonable, use a simpler approach
+    if (Math.abs(prediction) > 10) {
+      console.warn(`⚠️ [EXTREME PREDICTION WARNING] Raw prediction ${prediction.toFixed(6)} is extreme, using fallback method`);
+      // Fallback to simple trend-based prediction
+      const fallbackPrediction = Math.tanh(daysAhead / 100) * 0.1; // Max 10% change over time
+      console.log(`🛟 [FALLBACK] Using fallback prediction: ${fallbackPrediction.toFixed(6)}`);
+      prediction = fallbackPrediction;
     }
 
     // Convert price change back to actual price
+    console.log(`🔮 [PREDICTION DEBUG] Day ${daysAhead}:`);
+    console.log(`   🔢 Raw prediction: ${prediction.toFixed(6)}`);
+    console.log(`   💰 Last price: $${model.lastPrice.toFixed(2)}`);
+    
     // Clamp prediction to reasonable bounds to avoid extreme values
     const clampedPrediction = Math.max(-0.5, Math.min(0.5, prediction));
+    console.log(`   ⚖️ Clamped prediction: ${clampedPrediction.toFixed(6)} (clamped: ${prediction !== clampedPrediction})`);
+    
     const predictedPrice = model.lastPrice * (1 + clampedPrediction);
+    console.log(`   📈 Calculated price: $${predictedPrice.toFixed(2)}`);
+    
+    const finalPrice = Math.max(model.lastPrice * 0.1, predictedPrice);
+    console.log(`   🎯 Final price: $${finalPrice.toFixed(2)} (floored: ${finalPrice !== predictedPrice})`);
 
-    return Math.max(model.lastPrice * 0.1, predictedPrice); // Ensure minimum 10% of last price
+    return finalPrice;
   }
 
   /**
