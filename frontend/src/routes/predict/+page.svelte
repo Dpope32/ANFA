@@ -1,6 +1,6 @@
 <script lang="ts">
   import { StockForm, ModelAccuracy, PredictionDisplay } from "$lib/components";
-  import type { PredictionResult } from "$lib/trpc/types";
+  import type { PredictionResult } from "$lib/types";
 
   let result: PredictionResult | null = null;
   let error: string | null = null;

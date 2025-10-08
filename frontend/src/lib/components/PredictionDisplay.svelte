@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { predictionResultSchema, type PredictionResult } from "../trpc/types";
+  import { predictionResultSchema, type PredictionResult } from "../types";
   import { createEventDispatcher } from "svelte";
 
   // Component props with Zod validation
@@ -52,9 +52,9 @@
   }
 
   // Format timestamp with proper date handling
-  function formatTimestamp(timestamp: string): string {
+  function formatTimestamp(timestamp: Date | string): string {
     try {
-      const date = new Date(timestamp);
+      const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
       if (isNaN(date.getTime())) return 'Invalid Date';
       return new Intl.DateTimeFormat('en-US', {
         dateStyle: 'medium',

@@ -8,8 +8,8 @@
     type FormValidationErrors,
     type PredictionRequest
   } from "../schemas";
-  import { trpcClient } from "../trpc";
-  import type { PredictionResult } from "../trpc/types";
+  import { predict } from "../api";
+  import type { PredictionResult } from "../types";
 
   // Component props
   export let onPredictionResult: ((result: PredictionResult) => void) | undefined = undefined;
@@ -91,17 +91,8 @@
     isLoading = true;
     
     try {
-      // Convert form data to prediction request
-      const predictionRequest: PredictionRequest = {
-        symbol: formData.symbol,
-        timeframe: "30d" // Default timeframe
-      };
-
-      // Validate the prediction request
-      const validatedRequest = predictionRequestSchema.parse(predictionRequest);
-      
-      // Make the API call through tRPC client
-      const result = await trpcClient.predict(validatedRequest);
+      // Make the API call
+      const result = await predict(formData.symbol, "30d");
       
       // Dispatch success events
       dispatch("submit", formData);
